@@ -190,7 +190,7 @@ function hydrate_shape(shape_name) {
       x_scale: 1, y_scale: 1,
       layer: 1,
       active: true,
-      id: "piece-" + timestamp_id(),
+      id: "piece-" + timestamp_id().slice(-7),
       type: "piece",
       img: null, // gonna have to think about this
       rel_x: tile[0],
