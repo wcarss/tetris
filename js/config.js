@@ -52,8 +52,8 @@ let config_spec = {
         }
       } else if (map_manager.get_current_map_id() === "play_area") {
         if (player.shape === null) {
-          player_manager.modify_player('x', 128);
-          player_manager.modify_player('y', 0);
+          player_manager.modify_player('x', 168);
+          player_manager.modify_player('y', 40);
           player_manager.modify_player('shape', get_random_shape());
           player.shape.last_x = player.shape.x = player.x;
           player.shape.last_y = player.shape.y = player.y;
@@ -70,12 +70,30 @@ let config_spec = {
         } else if (player.shape.state === "static") {
           console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
           // check_lines();
-          if (player.shape.y < 10) {
-            map_manager.change_maps("intro", entity_manager);
-            entity_manager.clear_entities();
+          if (player.shape.y < 50) {
             console.log("exited because of high static shape");
+            player.shape.state = "done";
+            entity_manager.add_text({
+              id: "game_over",
+              text: "T E T ﻿Я I S ' D !",
+              x: 48,
+              y: 240,
+              offset_type: "fixed",
+              font: "48px sans bold",
+              color: "red",
+              update: function (delta, entity_manager) {
+              }
+            });
+            setTimeout(function reset_game () {
+              let player = player_manager.get_player();
+              player.shape = null;
+              map_manager.change_maps("intro", entity_manager);
+              entity_manager.remove_text("game_over");
+              entity_manager.clear_entities();
+            }, 2000);
+          } else {
+            player.shape = null;
           }
-          player.shape = null;
         } else { // player.shape is non-null and non-static
           player.shape.last_x = player.shape.x;
           player.shape.last_y = player.shape.y;
@@ -99,8 +117,8 @@ let config_spec = {
   "player": {
     "id": "player1",
     "img": "nonexistent",
-    "x": 128,
-    "y": 20,
+    "x": 168,
+    "y": 60,
     "layer": 2,
     "x_scale": 1,
     "y_scale": 1,
@@ -165,7 +183,7 @@ let config_spec = {
     "x": 0,
     "y": 0,
     "width": 320,
-    "height": 512,
+    "height": 576,
     "left_margin": 96,
     "right_margin": 96,
     "top_margin": 100,
@@ -176,8 +194,8 @@ let config_spec = {
     "to_load": [
     ],
     "intro": {
-      "width": 320,
-      "height": 512,
+      "width": 360,
+      "height": 616,
       "id": "intro",
       "player_layer": 2,
       "init": function (entity_manager) {
@@ -185,11 +203,11 @@ let config_spec = {
 
         entity_manager.add_text({
           id: "intro_text",
-          text: "T E T R I S ! ! !",
-          x: 30,
-          y: 210,
+          text: "T E T ﻿Я I S ! ! !",
+          x: 48,
+          y: 240,
           offset_type: "fixed",
-          font: "44px sans",
+          font: "48px sans bold",
           color: "red",
           update: function (delta, entity_manager) {
           }
@@ -197,13 +215,13 @@ let config_spec = {
 
         ui_manager.add_button({
           id: "start_game",
-          x: 150,
-          y: 350,
-          width: 100,
-          height: 50,
-          text: "<p style='margin: 8px 0'>START!</p>",
+          x: 136,
+          y: 360,
+          width: 128,
+          height: 64,
+          text: "<p style='margin: 16px 0'>START!</p>",
           background: "white",
-          style: 'color: black; text-align: center'
+          style: 'color: black; font-size: 2em; text-align: center'
         });
         console.log("map " + this.id + ": initialized");
       },
@@ -227,12 +245,25 @@ let config_spec = {
             "layer": -1,
           }
         ],
+        [
+          {
+            "id": "background_black",
+            "img": "background_black",
+            "x": 40,
+            "y": 40,
+            "x_scale": 10,
+            "y_scale": 18,
+            "x_size": 320,
+            "y_size": 576,
+            "layer": -0.5,
+          }
+        ]
       ]
     },
     "play_area": {
       "id": "play_area",
-      "width": 320,
-      "height": 512,
+      "width": 360,
+      "height": 616,
       "player_layer": 2,
       "layers": [
         [
@@ -252,12 +283,12 @@ let config_spec = {
           {
             "id": "background_black",
             "img": "background_black",
-            "x": 0,
-            "y": 0,
+            "x": 40,
+            "y": 40,
             "x_scale": 10,
-            "y_scale": 16,
+            "y_scale": 18,
             "x_size": 320,
-            "y_size": 512,
+            "y_size": 576,
             "layer": -0.5,
           }
         ] // layer
