@@ -61,6 +61,12 @@ function log_all(pre_message, hash) {
   console.log(str);
 }
 
+function console_log(msg) {
+  if (debug) {
+    console.log(msg);
+  }
+}
+
 function throttle(func, wait) {
   var last_time = null;
   return function() {
@@ -76,7 +82,7 @@ function timestamp_id (delimiter, resolution) {
   delimiter = delimiter || "_";
   resolution = resolution !== 0 ? (resolution || 3) : 0;
   let id = (performance.timing.navigationStart+performance.now()).toFixed(resolution).split(".").join(delimiter);
-  console.log("generated timestamp_id: " + id);
+//  console.log("generated timestamp_id: " + id);
   return id;
 }
 

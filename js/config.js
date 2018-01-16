@@ -1,3 +1,4 @@
+let last_debug_change = 0, debug = false;
 let config_spec = {
   "game": {
     "init": function (entity_manager, control_manager, ui_manager, map_manager, player_manager, request_manager) {
@@ -10,6 +11,39 @@ let config_spec = {
         player_manager = entity_manager.get_player_manager(),
         player = player_manager.get_player(),
         shape = null, color = null;
+
+      if (player.shape && player.shape.state === "done") {
+        return;
+      }
+
+      if (controls.keys('KeyP')) {
+        c = controls.get_controls();
+        delete c['KeyP'];
+        debugger;
+      }
+
+      if (controls.keys('KeyT')) {
+        if (performance.now() - last_debug_change > 100) {
+          last_debug_change = performance.now();
+          if (!debug) {
+            debug = true;
+            entity_manager.add_text({
+              id: "debug_mode",
+              text: "debugging logging enabled!",
+              x: 360,
+              y: 48,
+              offset_type: "fixed",
+              font: "24px sans",
+              color: "white",
+              update: function (delta, entity_manager) {
+              }
+            });
+          } else {
+            entity_manager.remove_text("debug_mode");
+            debug = false;
+          }
+        }
+      }
 
       if (map_manager.get_current_map_id() === "intro") {
         if (controls.buttons('start_game') || controls.keys('Enter')) {
