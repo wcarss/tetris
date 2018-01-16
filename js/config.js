@@ -10,7 +10,8 @@ let config_spec = {
         map_manager = entity_manager.get_map_manager(),
         player_manager = entity_manager.get_player_manager(),
         player = player_manager.get_player(),
-        shape = null, color = null;
+        shape = null, color = null, piece = null,
+        offset_x = 40, offset_y = 40;
 
       if (player.shape && player.shape.state === "done") {
         return;
@@ -69,6 +70,11 @@ let config_spec = {
           }
         } else if (player.shape.state === "static") {
           console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
+          for (i in player.shape.pieces) {
+            piece = player.shape.pieces[i];
+            piece.x = Math.round((piece.x - offset_x) / piece.x_size) * piece.x_size + offset_x;
+            piece.y = Math.round((piece.y - offset_y) / piece.y_size) * piece.y_size + offset_y;
+          }
           // check_lines();
           if (player.shape.y < 50) {
             console.log("exited because of high static shape");
