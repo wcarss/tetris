@@ -68,7 +68,7 @@ let config_spec = {
             entity_manager.add_entity(piece);
           }
         } else if (player.shape.state === "static") {
-          player.shape.halt(entity_manager);
+          console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
           // check_lines();
           if (player.shape.y < 10) {
             map_manager.change_maps("intro", entity_manager);
@@ -83,7 +83,7 @@ let config_spec = {
           player.shape.y = player.y;
           if (player.shape.last_y === player.shape.y) {
             console.log("static-tize them, cap'n!!!");
-            player.shape.state = "static";
+            player.shape.halt(entity_manager);
           }
         }
       }

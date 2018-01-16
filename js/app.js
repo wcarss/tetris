@@ -150,11 +150,35 @@ function hydrate_shape(shape_name) {
       name: shape_name,
       pieces: [],
       state: "falling",
+      moved_count: 0,
+      moved: {},
       halt: function (entity_manager) {
+        let piece = null, reset = null;
+        console_log("halting shape at x,y: " + this.x + "," + this.y + " w/ state: " + this.state);
+
         for (i in this.pieces) {
-          this.pieces[i].halt(entity_manager);
+          piece = this.pieces[i];
+          if (this.moved[piece.id]) {
+            reset = true;
+            console_log("calling halt for piece " + piece.id + " && setting reset");
+          } else {
+            console_log("calling halt for piece " + piece.id + " && NOT setting reset");
+          }
+          this.pieces[i].halt(entity_manager, reset);
+          reset = false;
         }
+
         this.state = "static";
+      },
+      track_movement: function (id) {
+        this.moved_count += 1;
+        this.moved[id] = true;
+        if (this.moved_count > 3) {
+          /* > 2 indicates all pieces moved successfully */
+          this.moved_count = 0;
+          this.moved = {};
+          console_log("resetting this.moved in track_movement");
+        }
       }
     };
 
@@ -183,26 +207,36 @@ function hydrate_shape(shape_name) {
         if (this.state === "falling") {
           this.last_x = this.x
           this.last_y = this.y;
-          this.x = this.shape.x + this.rel_x * this.x_size;
-          this.y = this.shape.y + this.rel_y * this.y_size;
+          this.x = Math.floor(this.shape.x) + this.rel_x * this.x_size;
+          this.y = Math.floor(this.shape.y) + this.rel_y * this.y_size;
           collisions = entity_manager.collide(this);
           for (i in collisions) {
             entity = collisions[i];
             if (entity.type && entity.type === "piece" && entity.state !== "falling") {
+                console_log("issuing shape halt from piece " + this.id + " at " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y);
+                this.x = this.last_x;
+                this.y = this.last_y;
                 shape.halt(entity_manager);
                 return;
             }
           }
+          console_log("moving piece " + this.id + " to " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y); 
+          this.shape.track_movement(this.id);
           entity_manager.move_entity(this, this.x, this.y);
         }
       },
-      halt: function (entity_manager) {
+      halt: function (entity_manager, reset) {
         this.shape = null;
         if (this.state !== "static") {
           this.state = "static";
-          this.x = this.last_x;
-          this.y = this.last_y;
-          entity_manager.move_entity(this, this.x, this.y);
+          if (reset) {
+            console_log("halting & resetting piece: " + this.id + " - x,y: " + this.x + "," + this.y + " && lx,ly: " + this.last_x + "," + this.last_y);
+            this.x = this.last_x;
+            this.y = this.last_y;
+            entity_manager.move_entity(this, this.x, this.y);
+          } else {
+            console_log("halting & not resetting piece: " + this.id + " - x,y: " + this.x + "," + this.y);
+          }
         }
       }
     });
