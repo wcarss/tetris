@@ -198,7 +198,7 @@ function hydrate_shape(shape_name) {
       shape: shape,
       state: "falling",
       update: function (delta, entity_manager) {
-        let collisions = null, entity = null;
+        let collisions = null, entity = null, epsilon = 2;
 
         if (!this.active) {
           return;
@@ -213,11 +213,13 @@ function hydrate_shape(shape_name) {
           for (i in collisions) {
             entity = collisions[i];
             if (entity.type && entity.type === "piece" && entity.state !== "falling") {
+              if (entity.x-epsilon < this.x && entity.x + epsilon > this.x && entity.y > this.y+15) {
                 console_log("issuing shape halt from piece " + this.id + " at " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y);
                 this.x = this.last_x;
                 this.y = this.last_y;
                 shape.halt(entity_manager);
                 return;
+              }
             }
           }
           console_log("moving piece " + this.id + " to " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y); 
