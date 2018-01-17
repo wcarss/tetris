@@ -124,7 +124,7 @@ let config_spec = {
     "id": "player1",
     "img": "nonexistent",
     "x": 168,
-    "y": 60,
+    "y": 72,
     "layer": 2,
     "x_scale": 1,
     "y_scale": 1,
@@ -181,14 +181,14 @@ let config_spec = {
         this.y = clamp(this.y, bounds.y, bounds.height - this.y_size);
 
         entity_manager.move_entity(this, this.x, this.y);
-        entity_manager.get_camera_manager().center(0, 0);
+        entity_manager.get_camera_manager().center(-40, -40);
       }
     }
   },
   "camera": {
     "x": 0,
     "y": 0,
-    "width": 320,
+    "width": 360,
     "height": 576,
     "left_margin": 96,
     "right_margin": 96,
