@@ -11,7 +11,8 @@ let config_spec = {
         player_manager = entity_manager.get_player_manager(),
         player = player_manager.get_player(),
         shape = null, color = null, piece = null,
-        offset_x = 40, offset_y = 40;
+        offset_x = 40, offset_y = 40,
+        pieces = null;
 
       if (player.shape && player.shape.state === "done") {
         return;
@@ -105,6 +106,21 @@ let config_spec = {
           player.shape.last_y = player.shape.y;
           player.shape.x = player.x;
           player.shape.y = player.y;
+
+          pieces = player.shape.pieces;
+          player.shape.lowest_x = Math.min(
+            pieces[0].x, pieces[1].x, pieces[2].x, pieces[3].x
+          );
+          player.shape.highest_x = 32 + Math.max(
+            pieces[0].x, pieces[1].x, pieces[2].x, pieces[3].x
+          );
+
+          player.shape.lowest_y = Math.min(
+            pieces[0].y, pieces[1].y, pieces[2].y, pieces[3].y
+          );
+          player.shape.highest_y = 32 + Math.max(
+            pieces[0].y, pieces[1].y, pieces[2].y, pieces[3].y
+          );
           if (player.shape.last_y === player.shape.y) {
             console.log("static-tize them, cap'n!!!");
             player.shape.halt(entity_manager);
@@ -177,8 +193,21 @@ let config_spec = {
         this.y += this.y_velocity;
 
         let bounds = map_manager.get_bounds();
-        this.x = clamp(this.x, bounds.x, bounds.width - this.x_size);
-        this.y = clamp(this.y, bounds.y, bounds.height - this.y_size);
+        if (this.shape && this.shape.lowest_x) {
+          this.x = clamp(
+            this.x,
+            bounds.x + 40 + (this.shape.x - this.shape.lowest_x),
+            bounds.width - (this.shape.highest_x - this.shape.x),
+          );
+          this.y = clamp(
+            this.y,
+            bounds.y + 40 + (this.shape.y - this.shape.lowest_y),
+            bounds.height - (this.shape.highest_y - this.shape.y),
+          );
+        } else {
+          this.x = clamp(this.x, bounds.x, bounds.width - this.x_size);
+          this.y = clamp(this.y, bounds.y, bounds.height - this.y_size);
+        }
 
         entity_manager.move_entity(this, this.x, this.y);
         entity_manager.get_camera_manager().center(-40, -40);

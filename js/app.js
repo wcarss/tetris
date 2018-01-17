@@ -152,6 +152,8 @@ function hydrate_shape(shape_name) {
       state: "falling",
       moved_count: 0,
       moved: {},
+      lowest_x: 0, highest_x: 0,
+      lowest_y: 0, highest_y: 0,
       halt: function (entity_manager) {
         let piece = null, reset = null;
         console_log("halting shape at x,y: " + this.x + "," + this.y + " w/ state: " + this.state);
