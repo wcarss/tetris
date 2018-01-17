@@ -1,4 +1,4 @@
-let last_debug_change = 0, debug = false;
+let last_debug_change = 0, debug = false, rows = null;
 let config_spec = {
   "game": {
     "init": function (entity_manager, control_manager, ui_manager, map_manager, player_manager, request_manager) {
@@ -48,6 +48,11 @@ let config_spec = {
       }
 
       if (map_manager.get_current_map_id() === "intro") {
+        rows = [
+          null, null, null, null, null, null,
+          null, null, null, null, null, null,
+          null, null, null, null, null, null
+        ];
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area", entity_manager);
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
@@ -73,9 +78,64 @@ let config_spec = {
           console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
           for (i in player.shape.pieces) {
             piece = player.shape.pieces[i];
-            piece.x = Math.round((piece.x - offset_x) / piece.x_size) * piece.x_size + offset_x;
-            piece.y = Math.round((piece.y - offset_y) / piece.y_size) * piece.y_size + offset_y;
+            x_index = Math.round((piece.x - offset_x) / piece.x_size);
+            y_index = Math.round((piece.y - offset_y) / piece.y_size);
+            piece.x = x_index * piece.x_size + offset_x;
+            piece.y = y_index * piece.y_size + offset_y;
+            if (rows[y_index] === null) {
+              rows[y_index] = [
+                null,null,null,null,null,
+                null,null,null,null,null
+              ];
+            }
+            rows[y_index][x_index] = piece.id;
           }
+          for (ii = 17; ii >= 0; ii--) {
+            console.log(i);
+            if (rows[ii] !== null) {
+
+
+              for (j = 0; j < 10; j++) {
+                if (!rows[ii][j]) {
+                  break;
+                }
+
+//              we made it to the last piece of this loop!
+                if (j === 9) {
+                  console.log("j is 9");
+//                function clear_row_and_copy_others_down(i) {}
+                  for (l = 0; l < 10; l++) {
+                    if (rows[ii] === null) {
+                      console.log('what the heck');
+                      debugger;
+                    } else {
+                      entity_manager.remove_entity(rows[ii][l]);
+                    }
+                  }
+                  for (k = ii; k > 0; k--) {
+                    rows[k] = rows[k-1];
+                    if (!rows[k]) {
+                      // if the next row is null, skip it
+                      continue;
+                    }
+                    for (l = 0; l < 10; l++) {
+                      // need to also actually move all of those pieces
+                      if (rows[k][l]) {
+                        entity = entity_manager.get_entity(rows[k][l]);
+                        entity_manager.move_entity(entity, entity.x, entity.y+entity.y_size);
+                      }
+                    }
+                  }
+                  // have to re-examine this row now
+                  console.log("decrementing ii");
+                  ii = ii + 1;
+                }
+              }
+
+
+            }
+          }
+          
           // check_lines();
           if (player.shape.y < 50) {
             console.log("exited because of high static shape");

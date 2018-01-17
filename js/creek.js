@@ -1002,7 +1002,7 @@ let EntityManager = (function () {
     get_entity = function (id) {
       for (i in entities) {
         if (entities[i].id === id) {
-          return entities[i].id;
+          return entities[i];
         }
       }
     },
@@ -1214,6 +1214,7 @@ let EntityManager = (function () {
       add_text: add_text,
       get_texts: get_texts,
       remove_text: remove_text,
+      remove_entity: remove_entity,
       load_if_needed: load_if_needed,
     };
   };
