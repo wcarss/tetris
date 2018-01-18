@@ -11,14 +11,10 @@ function rotate_shape(shape, direction) {
 }
 
 function get_random_piece_color() {
-  let colors = [
-    "base_tile_grey",
-    "base_tile_white",
-    "base_tile_black",
-    "base_tile_red",
-  ];
+  let level_string = "level_6_tile_";
+  let tile = array_random([1,3,5,6]);
 
-  return array_random(colors);
+  return level_string + tile;
 }
 /*
 function draw_shape(shape, context) {

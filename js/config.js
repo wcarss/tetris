@@ -296,33 +296,19 @@ let config_spec = {
       "init": function (entity_manager) {
         ui_manager = entity_manager.get_ui_manager();
 
-        entity_manager.add_text({
-          id: "intro_text",
-          text: "T E T ﻿Я I S ! ! !",
-          x: 48,
-          y: 240,
-          offset_type: "fixed",
-          font: "48px sans bold",
-          color: "red",
-          update: function (delta, entity_manager) {
-          }
-        });
-
         ui_manager.add_button({
           id: "start_game",
           x: 136,
-          y: 360,
+          y: 475,
           width: 128,
           height: 64,
-          text: "<p style='margin: 16px 0'>START!</p>",
-          background: "white",
-          style: 'color: black; font-size: 2em; text-align: center'
+          text: '',
+          style: 'color: white; font-size: 1.4em; text-align: center'
         });
         console.log("map " + this.id + ": initialized");
       },
       "deinit": function (entity_manager) {
         ui_manager = entity_manager.get_ui_manager();
-        entity_manager.remove_text("intro_text");
         ui_manager.remove_button("start_game");
         console.log("map " + this.id + ": de-initialized");
       },
@@ -351,6 +337,41 @@ let config_spec = {
             "x_size": 320,
             "y_size": 576,
             "layer": -0.5,
+          }
+        ],
+        [
+          {
+            x: 40,
+            y: 160,
+            x_size: 320,
+            y_size: 94,
+            x_scale: 1,
+            y_scale: 1,
+            img: "logo",
+            id: "logo",
+            layer: 1,
+          },
+          {
+            x: 110,
+            y: 280,
+            x_size: 176,
+            y_size: 144,
+            x_scale: 1,
+            y_scale: 1,
+            img: "castle",
+            id: "castle",
+            layer: 1,
+          },
+          {
+            x: 144,
+            y: 475,
+            x_size: 107,
+            y_size: 31,
+            x_scale: 1,
+            y_scale: 1,
+            img: "start",
+            id: "start",
+            layer: 1,
           }
         ]
       ]
@@ -476,6 +497,87 @@ let config_spec = {
       "type": "image",
       "url": "resources/images/background_blue.png",
       "id": "background_blue",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/castle.png",
+      "id": "castle",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 176,
+      "source_height": 144,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/logo_smaller.png",
+      "id": "logo",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 320,
+      "source_height": 94,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/start.png",
+      "id": "start",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 107,
+      "source_height": 31,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/level_6_tile_1.png",
+      "id": "level_6_tile_1",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/level_6_tile_2.png",
+      "id": "level_6_tile_2",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/level_6_tile_3.png",
+      "id": "level_6_tile_3",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/level_6_tile_4.png",
+      "id": "level_6_tile_4",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/level_6_tile_5.png",
+      "id": "level_6_tile_5",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/level_6_tile_6.png",
+      "id": "level_6_tile_6",
       "source_x": 0,
       "source_y": 0,
       "source_width": 32,
