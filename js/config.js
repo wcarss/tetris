@@ -1,4 +1,4 @@
-let last_debug_change = 0, debug = false, rows = null, paused = false, last_pause_call = 0;
+let last_debug_change = 0, debug = false, rows = null, paused = false, last_pause_call = 0, score = 0, rows_cleared = 0, high_score = 0, high_rows = 0;
 let config_spec = {
   "game": {
     "init": function (entity_manager, control_manager, ui_manager, map_manager, player_manager, request_manager) {
@@ -12,6 +12,7 @@ let config_spec = {
         player = player_manager.get_player(),
         shape = null, first_color = null, color = null, piece = null,
         offset_x = 40, offset_y = 40,
+        cookies = null, cookie = null, cookie_name = null, cookie_value = null,
         pieces = null;
 
       if (player.shape && player.shape.state === "done") {
@@ -85,6 +86,25 @@ let config_spec = {
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area", entity_manager);
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
+          score = 0;
+          rows_cleared = 0;
+          if (document.cookie) {
+            cookies = document.cookie.split("; ");
+            console.log(cookies);
+            for (cookie_index in cookies) {
+              cookie = cookies[cookie_index];
+              console.log("cookie: " + cookie);
+              if (cookie.startsWith("v0_")) {
+                cookie_name = cookie.split("=")[0];
+                cookie_value = cookie.split("=")[1];
+                if (cookie_name === "v0_high_score") {
+                  high_score = cookie_value;
+                } else if (cookie_name === "v0_high_rows") {
+                  high_rows = cookie_value;
+                }
+              }
+            }
+          }
           // awful hack
           last_pause_call = performance.now();
         }
@@ -131,6 +151,10 @@ let config_spec = {
             entity_manager.move_entity(piece, piece.x, piece.y);
           }
         } else if (player.shape.state === "static") {
+          score += random_int(3,9);
+          if (score > high_score) {
+            high_score = score;
+          }
           console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
           for (i in player.shape.pieces) {
             piece = player.shape.pieces[i];
@@ -159,6 +183,14 @@ let config_spec = {
 //              we made it to the last piece of this loop!
                 if (j === 9) {
                   console.log("j is 9");
+                  rows_cleared += 1;
+                  if (rows_cleared > high_rows) {
+                    high_rows = rows_cleared;
+                  }
+                  score += 200;
+                  if (score > high_score) {
+                    high_score = score;
+                  }
 //                function clear_row_and_copy_others_down(i) {}
                   for (l = 0; l < 10; l++) {
                     if (rows[ii] === null) {
@@ -213,6 +245,9 @@ let config_spec = {
               map_manager.change_maps("intro", entity_manager);
               entity_manager.remove_text("game_over");
               entity_manager.clear_entities();
+              let age = 24 * 60 * 60 * 7; // 1 week
+              document.cookie = "v0_high_score="+high_score+";max-age="+age;
+              document.cookie = "v0_high_rows="+high_rows+";max-age="+age;
             }, 2000);
           } else {
             player.shape = null;
@@ -439,6 +474,82 @@ let config_spec = {
       "width": 360,
       "height": 616,
       "player_layer": 2,
+      "init": function (entity_manager) {
+        entity_manager.add_text({
+          id: "score",
+          text: "score:",
+          x: 384,
+          y: 256,
+          offset_type: "fixed",
+          font: "16px sans bold",
+          color: "white",
+          update: function (delta, entity_manager) {
+            if (score >= high_score) {
+              this.color = "red";
+            } else {
+              this.color = "white";
+            }
+            this.text = "score: " + score;
+          }
+        });
+        entity_manager.add_text({
+          id: "high_score",
+          text: "high score: ",
+          x: 384,
+          y: 276,
+          offset_type: "fixed",
+          font: "16px sans bold",
+          color: "white",
+          update: function (delta, entity_manager) {
+            if (score >= high_score) {
+              this.color = "red";
+            } else {
+              this.color = "white";
+            }
+            this.text = "hi score: " + high_score;
+          }
+        });
+        entity_manager.add_text({
+          id: "rows_cleared",
+          text: "rows: ",
+          x: 384,
+          y: 296,
+          offset_type: "fixed",
+          font: "16px sans bold",
+          color: "white",
+          update: function (delta, entity_manager) {
+            if (rows_cleared >= high_rows) {
+              this.color = "red";
+            } else {
+              this.color = "white";
+            }
+            this.text = "rows: " + rows_cleared;
+          }
+        });
+        entity_manager.add_text({
+          id: "high_rows",
+          text: "high_rows: ",
+          x: 384,
+          y: 316,
+          offset_type: "fixed",
+          font: "16px sans bold",
+          color: "white",
+          update: function (delta, entity_manager) {
+            if (rows_cleared >= high_rows) {
+              this.color = "red";
+            } else {
+              this.color = "white";
+            }
+            this.text = "hi rows: " + high_rows;
+          }
+        });
+      },
+      "deinit": function (entity_manager) {
+        entity_manager.remove_text("score");
+        entity_manager.remove_text("high_score");
+        entity_manager.remove_text("rows_cleared");
+        entity_manager.remove_text("high_rows");
+      },
       "layers": [
         [
           {
@@ -474,6 +585,17 @@ let config_spec = {
             "y_scale": 5,
             "x_size": 160,
             "y_size": 160,
+            "layer": -0.5,
+          },
+          {
+            "id": "next_piece_box",
+            "img": "background_black",
+            "x": 376,
+            "y": 232,
+            "x_scale": 5,
+            "y_scale": 3,
+            "x_size": 160,
+            "y_size": 96,
             "layer": -0.5,
           }
         ] // layer
