@@ -210,7 +210,7 @@ let config_spec = {
     "y_velocity": 0,
     "max_x_velocity": 32,
     "min_x_velocity": -32,
-    "max_y_velocity": 3,
+    "max_y_velocity": 5,
     "min_y_velocity": 0.5,
     "shape": null,
     "score": 0,
@@ -226,7 +226,7 @@ let config_spec = {
             this.last_rotated = performance.now();
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
-          this.y_velocity = 3 * delta;
+          this.y_velocity = 5 * delta;
         } else {
           this.y_velocity *= 0.5;
         }
