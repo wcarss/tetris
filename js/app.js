@@ -215,7 +215,7 @@ function hydrate_shape(shape_name) {
                 console_log("issuing shape halt from piece " + this.id + " at " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y);
                 this.x = this.last_x;
                 this.y = this.last_y;
-                shape.halt(entity_manager);
+                this.shape.halt(entity_manager);
                 return;
               }
             }
