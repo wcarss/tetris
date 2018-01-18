@@ -1,4 +1,4 @@
-let last_debug_change = 0, debug = false, rows = null;
+let last_debug_change = 0, debug = false, rows = null, paused = false, last_pause_call = 0;
 let config_spec = {
   "game": {
     "init": function (entity_manager, control_manager, ui_manager, map_manager, player_manager, request_manager) {
@@ -18,10 +18,39 @@ let config_spec = {
         return;
       }
 
-      if (controls.keys('KeyP')) {
+      if ((controls.keys('KeyP') || controls.keys('Enter') || controls.keys('Escape')) && map_manager.get_current_map_id() !== "intro") {
+        if ((performance.now() - last_pause_call) > 250) {
+          last_pause_call = performance.now();
+          if (paused) {
+            entity_manager.remove_text("pause_text");
+          } else {
+            entity_manager.add_text({
+              id: "pause_text",
+              text: "P A U S E",
+              x: 98,
+              y: 240,
+              offset_type: "fixed",
+              font: "48px sans bold",
+              color: "red",
+              update: function (delta, entity_manager) {
+              }
+            });
+          }
+          paused = !paused;
+          player.paused = paused;
+        }
+      }
+
+      if (controls.keys('Backquote') && controls.keys('ShiftLeft')) {
+        last_pause_call = performance.now();
         c = controls.get_controls();
-        delete c['KeyP'];
+        delete c['Backquote'];
+        delete c['ShiftLeft'];
         debugger;
+      }
+
+      if (paused) {
+        return;
       }
 
       if (controls.keys('KeyT')) {
@@ -56,6 +85,8 @@ let config_spec = {
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area", entity_manager);
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
+          // awful hack
+          last_pause_call = performance.now();
         }
       } else if (map_manager.get_current_map_id() === "play_area") {
         if (player.shape === null) {
@@ -214,11 +245,12 @@ let config_spec = {
     "min_y_velocity": 0.5,
     "shape": null,
     "score": 0,
+    "paused": false,
     "update": function (delta, entity_manager) {
       let map_manager = entity_manager.get_map_manager(),
         controls = entity_manager.get_control_manager();
 
-      if (map_manager.get_current_map_id() === "intro") {
+      if (map_manager.get_current_map_id() === "intro" || this.paused) {
       } else if (map_manager.get_current_map_id() === "play_area") {
         if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space')) {
           if (!this.last_rotated || (performance.now() - this.last_rotated) > 150) {
