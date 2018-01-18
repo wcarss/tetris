@@ -80,6 +80,8 @@ let config_spec = {
             piece = player.shape.pieces[i];
             x_index = Math.round((piece.x - offset_x) / piece.x_size);
             y_index = Math.round((piece.y - offset_y) / piece.y_size);
+            x_index = clamp(x_index, 0, 9);
+            y_index = clamp(y_index, 0, 17);
             piece.x = x_index * piece.x_size + offset_x;
             piece.y = y_index * piece.y_size + offset_y;
             if (rows[y_index] === null) {
@@ -91,9 +93,7 @@ let config_spec = {
             rows[y_index][x_index] = piece.id;
           }
           for (ii = 17; ii >= 0; ii--) {
-            console.log(i);
             if (rows[ii] !== null) {
-
 
               for (j = 0; j < 10; j++) {
                 if (!rows[ii][j]) {
