@@ -10,7 +10,7 @@ let config_spec = {
         map_manager = entity_manager.get_map_manager(),
         player_manager = entity_manager.get_player_manager(),
         player = player_manager.get_player(),
-        shape = null, color = null, piece = null,
+        shape = null, first_color = null, color = null, piece = null,
         offset_x = 40, offset_y = 40,
         pieces = null;
 
@@ -92,18 +92,43 @@ let config_spec = {
         if (player.shape === null) {
           player_manager.modify_player('x', 168);
           player_manager.modify_player('y', 40);
-          player_manager.modify_player('shape', get_random_shape());
+          if (player.next_shape) {
+            player_manager.modify_player('shape', player.next_shape);
+            player.shape.state = "falling";
+            first_color = null;
+          } else {
+            player_manager.modify_player('shape', get_random_shape());
+            first_color = get_random_piece_color();
+          }
+          player_manager.modify_player('next_shape', get_random_shape());
+          player.next_shape.state = "next";
+          player.next_shape.last_x = player.next_shape.x = 440;
+          player.next_shape.last_y = player.next_shape.y = 88;
+          let color = get_random_piece_color();
+          for (next_index in player.next_shape.pieces) {
+            piece = player.next_shape.pieces[next_index];
+            piece.img = color;
+            piece.state = "next";
+            piece.x = player.next_shape.x + piece.rel_x * piece.x_size;
+            piece.y = player.next_shape.y + piece.rel_y * piece.y_size;
+            piece.last_x = piece.x;
+            piece.last_y = piece.y;
+            entity_manager.add_entity(piece);
+          }
+
           player.shape.last_x = player.shape.x = player.x;
           player.shape.last_y = player.shape.y = player.y;
-          color = get_random_piece_color();
-          for (i in player.shape.pieces) {
-            piece = player.shape.pieces[i];
-            piece.img = color;
+          for (piece_index in player.shape.pieces) {
+            piece = player.shape.pieces[piece_index];
+            if (first_color) {
+              piece.img = first_color;
+            }
+            piece.state = "falling";
             piece.x = player.shape.x + piece.rel_x * piece.x_size;
             piece.y = player.shape.y + piece.rel_y * piece.y_size;
             piece.last_x = piece.x;
             piece.last_y = piece.y;
-            entity_manager.add_entity(piece);
+            entity_manager.move_entity(piece, piece.x, piece.y);
           }
         } else if (player.shape.state === "static") {
           console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
@@ -243,6 +268,7 @@ let config_spec = {
     "min_x_velocity": -32,
     "max_y_velocity": 5,
     "min_y_velocity": 0.5,
+    "next_shape": null,
     "shape": null,
     "score": 0,
     "paused": false,
@@ -437,6 +463,17 @@ let config_spec = {
             "y_scale": 18,
             "x_size": 320,
             "y_size": 576,
+            "layer": -0.5,
+          },
+          {
+            "id": "next_piece_box",
+            "img": "background_black",
+            "x": 376,
+            "y": 40,
+            "x_scale": 5,
+            "y_scale": 5,
+            "x_size": 160,
+            "y_size": 160,
             "layer": -0.5,
           }
         ] // layer
