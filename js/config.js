@@ -9,10 +9,11 @@ let config_spec = {
       let controls = entity_manager.get_control_manager(),
         map_manager = entity_manager.get_map_manager(),
         player_manager = entity_manager.get_player_manager(),
+        cookie_manager = entity_manager.get_cookie_manager(),
         player = player_manager.get_player(),
         shape = null, first_color = null, color = null, piece = null,
         offset_x = 40, offset_y = 40,
-        cookies = null, cookie = null, cookie_name = null, cookie_value = null,
+        cookies = null,
         pieces = null;
 
       if (player.shape && player.shape.state === "done") {
@@ -88,22 +89,12 @@ let config_spec = {
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
           score = 0;
           rows_cleared = 0;
-          if (document.cookie) {
-            cookies = document.cookie.split("; ");
-            console.log(cookies);
-            for (cookie_index in cookies) {
-              cookie = cookies[cookie_index];
-              console.log("cookie: " + cookie);
-              if (cookie.startsWith("v0_")) {
-                cookie_name = cookie.split("=")[0];
-                cookie_value = cookie.split("=")[1];
-                if (cookie_name === "v0_high_score") {
-                  high_score = cookie_value;
-                } else if (cookie_name === "v0_high_rows") {
-                  high_rows = cookie_value;
-                }
-              }
-            }
+          cookies = cookie_manager.get_cookies();
+          if (cookies['v0_high_score']) {
+            high_score = cookies['v0_high_score'];
+          }
+          if (cookies['v0_high_rows']) {
+            high_rows = cookies['v0_high_rows'];
           }
           // awful hack
           last_pause_call = performance.now();
@@ -246,8 +237,16 @@ let config_spec = {
               entity_manager.remove_text("game_over");
               entity_manager.clear_entities();
               let age = 24 * 60 * 60 * 7; // 1 week
-              document.cookie = "v0_high_score="+high_score+";max-age="+age;
-              document.cookie = "v0_high_rows="+high_rows+";max-age="+age;
+              cookie_manager.set_cookies({
+                'v0_high_score': {
+                  'value': high_score,
+                  'max_age': age
+                },
+                'v0_high_rows': {
+                  'value': high_rows,
+                  'max_age': age
+                }
+              });
             }, 2000);
           } else {
             player.shape = null;

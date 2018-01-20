@@ -31,6 +31,7 @@ let GameManager = (function () {
       request_manager = RequestManager();
       ui_manager = UIManager(config_manager, control_manager);
       context_manager = ContextManager(config_manager);
+      cookie_manager = CookieManager(config_manager);
 
       map_manager = MapManager(config_manager);
       player_manager = PlayerManager(config_manager, control_manager, map_manager);
@@ -43,7 +44,8 @@ let GameManager = (function () {
         physics_manager,
         game_state,
         request_manager,
-        ui_manager
+        ui_manager,
+        cookie_manager
       );
 
       resource_manager = ResourceManager(config_manager);
@@ -328,6 +330,68 @@ let ContextManager = (function () {
   };
 })();
 
+
+let CookieManager = (function () {
+  let cookies = null,
+    last_cookies = null,
+    set_cookies = function (cookie_dict) {
+      let cookie = null, value = null, output = null;
+
+      for (key in cookie_dict) {
+        cookie = cookie_dict[key];
+        value = cookie.value;
+        output = key + "=" + value;
+        if (cookie.path) {
+          output += ";path=" + cookie.path;
+        }
+        if (cookie.max_age) {
+          output += ";max-age=" + cookie.max_age;
+        }
+        if (cookie.expires) {
+          output += ";expires=" + cookie.expires;
+        }
+        if (cookie.domain) {
+          output += ";domain=" + cookie.domain;
+        }
+        if (cookie.secure) {
+          output += ";secure";
+        }
+
+        document.cookie = output;
+      }
+      load_cookies();
+    },
+    load_cookies = function () {
+      let cookie_pairs = document.cookie.split("; "),
+        cookie_pair = null;
+
+      last_cookies = cookies;
+      cookies = {};
+
+      for (index in cookie_pairs) {
+        cookie_pair = cookie_pairs[index].split("=");
+        cookies[cookie_pair[0]] = cookie_pair[1];
+      }
+
+      return cookies;
+    },
+    get_cookies = function () {
+      return cookies;
+    },
+    init = function (config_manager) {
+      cookies = load_cookies();
+    };
+
+  return function (config_manager) {
+    init(config_manager);
+    console.log("CookieManager init.");
+
+    return {
+      get_cookies: get_cookies,
+      set_cookies: set_cookies
+    };
+  };
+})();
 
 
 let CameraManager = (function () {
@@ -966,6 +1030,7 @@ let EntityManager = (function () {
     player = null,
     camera_manager = null,
     request_manager = null,
+    cookie_manager = null,
     controls = null,
     maps = null,
     current_map_id = null,
@@ -1023,6 +1088,9 @@ let EntityManager = (function () {
     },
     get_ui_manager = function () {
       return ui_manager;
+    },
+    get_cookie_manager = function () {
+      return cookie_manager;
     },
     load_if_needed = function () {
       maps.load_if_needed();
@@ -1177,7 +1245,7 @@ let EntityManager = (function () {
         }
       }
     },
-    init = function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager) {
+    init = function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager) {
       controls = _controls;
       let tp = player = _player;
       camera_manager = _camera;
@@ -1186,13 +1254,14 @@ let EntityManager = (function () {
       game_state = _game;
       request_manager = _request;
       ui_manager = _ui_manager;
+      cookie_manager = _cookie_manager;
       last_particle_added = performance.now();
       texts = [];
       setup_entities();
     };
 
-  return function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager) {
-    init(_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager);
+  return function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager) {
+    init(_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager);
     console.log("EntityManager init.");
 
     return {
@@ -1204,6 +1273,7 @@ let EntityManager = (function () {
       get_camera_manager: get_camera_manager,
       get_request_manager: get_request_manager,
       get_ui_manager: get_ui_manager,
+      get_cookie_manager: get_cookie_manager,
       stale_entities: stale_entities,
       setup_entities: setup_entities,
       update: update,
