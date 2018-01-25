@@ -390,10 +390,10 @@ let config_spec = {
 
         ui_manager.add_button({
           id: "start_game",
-          x: 136,
-          y: 475,
-          width: 128,
-          height: 64,
+          x: 40,
+          y: 40,
+          width: 320,
+          height: 576,
           text: '',
           style: 'color: white; font-size: 1.4em; text-align: center'
         });
