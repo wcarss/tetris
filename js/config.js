@@ -10,6 +10,7 @@ let config_spec = {
         map_manager = entity_manager.get_map_manager(),
         player_manager = entity_manager.get_player_manager(),
         cookie_manager = entity_manager.get_cookie_manager(),
+        audio_manager = entity_manager.get_audio_manager(),
         player = player_manager.get_player(),
         shape = null, first_color = null, color = null, piece = null,
         offset_x = 40, offset_y = 40,
@@ -25,6 +26,7 @@ let config_spec = {
           last_pause_call = performance.now();
           if (paused) {
             entity_manager.remove_text("pause_text");
+            audio_manager.unpause_all();
           } else {
             entity_manager.add_text({
               id: "pause_text",
@@ -37,6 +39,8 @@ let config_spec = {
               update: function (delta, entity_manager) {
               }
             });
+            audio_manager.pause_all();
+            audio_manager.play("selection");
           }
           paused = !paused;
           player.paused = paused;
@@ -87,6 +91,8 @@ let config_spec = {
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area", entity_manager);
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
+          audio_manager.play("selection");
+          audio_manager.play("song_" + (random_int(3)+1));
           score = 0;
           rows_cleared = 0;
           cookies = cookie_manager.get_cookies();
@@ -142,6 +148,7 @@ let config_spec = {
             entity_manager.move_entity(piece, piece.x, piece.y);
           }
         } else if (player.shape.state === "static") {
+          audio_manager.play("piece_drop");
           score += random_int(3,9);
           if (score > high_score) {
             high_score = score;
@@ -175,6 +182,7 @@ let config_spec = {
                 if (j === 9) {
                   console.log("j is 9");
                   rows_cleared += 1;
+                  audio_manager.play("line_clear");
                   if (rows_cleared > high_rows) {
                     high_rows = rows_cleared;
                   }
@@ -236,6 +244,7 @@ let config_spec = {
               map_manager.change_maps("intro", entity_manager);
               entity_manager.remove_text("game_over");
               entity_manager.clear_entities();
+              audio_manager.stop_all();
               let age = 24 * 60 * 60 * 7; // 1 week
               cookie_manager.set_cookies({
                 'v0_high_score': {
@@ -602,6 +611,54 @@ let config_spec = {
     },    // map object
   },      // maps object
   "resources": [
+    {
+      "type": "sound",
+      "url": "resources/sounds/tetris_song_1.mp3",
+      "id": "song_1",
+      "muted": false,
+      "volume": 0.1,
+      "looping": true,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/tetris_song_2.mp3",
+      "id": "song_2",
+      "muted": false,
+      "volume": 0.1,
+      "looping": true,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/tetris_song_3.mp3",
+      "id": "song_3",
+      "muted": false,
+      "volume": 0.1,
+      "looping": true,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/line_clear.mp3",
+      "id": "line_clear",
+      "muted": false,
+      "volume": 0.3,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/piece_drop.mp3",
+      "id": "piece_drop",
+      "muted": false,
+      "volume": 0.05,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/selection.mp3",
+      "id": "selection",
+      "muted": false,
+      "volume": 0.3,
+      "looping": false,
+    },
     {
       "type": "image",
       "url": "resources/images/base_tile_red.png",
