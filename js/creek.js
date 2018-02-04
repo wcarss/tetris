@@ -773,7 +773,7 @@ let UIManager = (function () {
        *
        *   background: (optional) background for button
        *   style: (optional) custom-style
-       *   update: (optional) update-function taking entity_manager
+       *   update: (optional) update-function taking manager manager
        * }
        */
 
@@ -895,14 +895,14 @@ let MapManager = (function () {
         height: map.height,
       };
     },
-    change_maps = function (map_id, entity_manager) {
+    change_maps = function (map_id) {
       let now = performance.now();
 
       // only change maps every min_change_time ms
       if (now - last_change_time > min_change_time) {
         // teardown actions in old map (if any)
         if (maps[current_map_id].deinit) {
-          maps[current_map_id].deinit(entity_manager);
+          maps[current_map_id].deinit(manager);
         }
 
         // actually change the map
@@ -910,7 +910,7 @@ let MapManager = (function () {
 
         // setup actions in new map (if any)
         if (maps[current_map_id].init) {
-          maps[current_map_id].init(entity_manager);
+          maps[current_map_id].init(manager);
         }
         last_change_time = now;
       }
@@ -931,9 +931,9 @@ let MapManager = (function () {
 
       return tree;
     },
-    update = function (delta, entity_manager) {
+    update = function (delta, manager) {
       if (maps[current_map_id].update) {
-        maps[current_map_id].update(delta, entity_manager);
+        maps[current_map_id].update(delta, manager);
       }
     },
     load_if_needed = function () {
@@ -1002,8 +1002,8 @@ let PlayerManager = (function () {
     modify_player = function (key, value) {
       player[key] = value;
     },
-    update = function (delta, entity_manager) {
-      player.update(delta, entity_manager);
+    update = function (delta, manager) {
+      player.update(delta, manager);
     },
     init = function (_manager) {
       console.log("PlayerManager init.");
@@ -1283,17 +1283,17 @@ let EntityManager = (function () {
       entities = get_entities();
       for (i in entities) {
         if (entities[i].update) {
-          entities[i].update(delta, this);
+          entities[i].update(delta, manager);
         }
       }
 
-      player.update(delta, this);
-      maps.update(delta, this);
-      game_state.update(delta, this);
+      player.update(delta, manager);
+      maps.update(delta, manager);
+      game_state.update(delta, manager);
 
       for (i in texts) {
         if (texts[i].update) {
-          texts[i].update(delta, this);
+          texts[i].update(delta, manager);
         }
       }
     },

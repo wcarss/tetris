@@ -63,7 +63,7 @@ function hydrate_shape(shape_name) {
       moved: {},
       lowest_x: 0, highest_x: 0,
       lowest_y: 0, highest_y: 0,
-      halt: function (entity_manager) {
+      halt: function (manager) {
         let piece = null, reset = null;
         console_log("halting shape at x,y: " + this.x + "," + this.y + " w/ state: " + this.state);
 
@@ -75,7 +75,7 @@ function hydrate_shape(shape_name) {
           } else {
             console_log("calling halt for piece " + piece.id + " && NOT setting reset");
           }
-          this.pieces[i].halt(entity_manager, reset);
+          this.pieces[i].halt(manager, reset);
           reset = false;
         }
 
@@ -108,8 +108,9 @@ function hydrate_shape(shape_name) {
       rel_y: tile[1],
       shape: shape,
       state: "falling",
-      update: function (delta, entity_manager) {
+      update: function (delta, manager) {
         let collisions = null, entity = null, epsilon = 2;
+        let entity_manager = manager.get('entity');
 
         if (!this.active) {
           return;
@@ -128,7 +129,7 @@ function hydrate_shape(shape_name) {
                 console_log("issuing shape halt from piece " + this.id + " at " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y);
                 this.x = this.last_x;
                 this.y = this.last_y;
-                this.shape.halt(entity_manager);
+                this.shape.halt(manager);
                 return;
               }
             }
@@ -138,7 +139,7 @@ function hydrate_shape(shape_name) {
           entity_manager.move_entity(this, this.x, this.y);
         }
       },
-      halt: function (entity_manager, reset) {
+      halt: function (manager, reset) {
         this.shape = null;
         if (this.state !== "static") {
           this.state = "static";
@@ -146,7 +147,7 @@ function hydrate_shape(shape_name) {
             console_log("halting & resetting piece: " + this.id + " - x,y: " + this.x + "," + this.y + " && lx,ly: " + this.last_x + "," + this.last_y);
             this.x = this.last_x;
             this.y = this.last_y;
-            entity_manager.move_entity(this, this.x, this.y);
+            manager.get('entity').move_entity(this, this.x, this.y);
           } else {
             console_log("halting & not resetting piece: " + this.id + " - x,y: " + this.x + "," + this.y);
           }

@@ -4,14 +4,15 @@ let config_spec = {
     "init": function (_manager) {
       this.manager = _manager;
       this.player = _manager.get('player').get_player();
-      _manager.get('map').change_maps("intro", _manager.get('entity'));
+      _manager.get('map').change_maps("intro");
     },
-    "update": function (delta, entity_manager) {
-      let controls = entity_manager.get_control_manager(),
-        map_manager = entity_manager.get_map_manager(),
-        player_manager = entity_manager.get_player_manager(),
-        cookie_manager = entity_manager.get_cookie_manager(),
-        audio_manager = entity_manager.get_audio_manager(),
+    "update": function (delta, manager) {
+      let controls = manager.get('control'),
+        entity_manager = manager.get('entity'),
+        map_manager = manager.get('map'),
+        player_manager = manager.get('player'),
+        cookie_manager = manager.get('cookie'),
+        audio_manager = manager.get('audio'),
         player = player_manager.get_player(),
         shape = null, first_color = null, color = null, piece = null,
         offset_x = 40, offset_y = 40,
@@ -37,7 +38,7 @@ let config_spec = {
               offset_type: "fixed",
               font: "48px sans bold",
               color: "red",
-              update: function (delta, entity_manager) {
+              update: function (delta, manager) {
               }
             });
             audio_manager.pause_all();
@@ -73,7 +74,7 @@ let config_spec = {
               offset_type: "fixed",
               font: "24px sans",
               color: "white",
-              update: function (delta, entity_manager) {
+              update: function (delta, manager) {
               }
             });
           } else {
@@ -90,7 +91,7 @@ let config_spec = {
           null, null, null, null, null, null
         ];
         if (controls.buttons('start_game') || controls.keys('Enter')) {
-          map_manager.change_maps("play_area", entity_manager);
+          map_manager.change_maps("play_area");
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
           audio_manager.play("selection");
           audio_manager.play("song_" + (random_int(3)+1));
@@ -236,13 +237,13 @@ let config_spec = {
               offset_type: "fixed",
               font: "48px sans bold",
               color: "red",
-              update: function (delta, entity_manager) {
+              update: function (delta, manager) {
               }
             });
             setTimeout(function reset_game () {
               let player = player_manager.get_player();
               player.shape = null;
-              map_manager.change_maps("intro", entity_manager);
+              map_manager.change_maps("intro");
               entity_manager.remove_text("game_over");
               entity_manager.clear_entities();
               audio_manager.stop_all();
@@ -283,7 +284,7 @@ let config_spec = {
           );
           if (player.shape.last_y === player.shape.y) {
             console.log("static-tize them, cap'n!!!");
-            player.shape.halt(entity_manager);
+            player.shape.halt(manager);
           }
         }
       }
@@ -316,9 +317,10 @@ let config_spec = {
     "shape": null,
     "score": 0,
     "paused": false,
-    "update": function (delta, entity_manager) {
-      let map_manager = entity_manager.get_map_manager(),
-        controls = entity_manager.get_control_manager();
+    "update": function (delta, manager) {
+      let map_manager = manager.get('map'),
+        controls = manager.get('control'),
+        entity_manager = manager.get('entity');
 
       if (map_manager.get_current_map_id() === "intro" || this.paused) {
       } else if (map_manager.get_current_map_id() === "play_area") {
@@ -395,10 +397,8 @@ let config_spec = {
       "height": 616,
       "id": "intro",
       "player_layer": 2,
-      "init": function (entity_manager) {
-        let ui_manager = entity_manager.get_ui_manager();
-
-        ui_manager.add_button({
+      "init": function (manager) {
+        manager.get('ui').add_button({
           id: "start_game",
           x: 40,
           y: 40,
@@ -409,9 +409,8 @@ let config_spec = {
         });
         console.log("map " + this.id + ": initialized");
       },
-      "deinit": function (entity_manager) {
-        let ui_manager = entity_manager.get_ui_manager();
-        ui_manager.remove_button("start_game");
+      "deinit": function (manager) {
+        manager.get('ui').remove_button("start_game");
         console.log("map " + this.id + ": de-initialized");
       },
       "layers": [
@@ -483,7 +482,8 @@ let config_spec = {
       "width": 360,
       "height": 616,
       "player_layer": 2,
-      "init": function (entity_manager) {
+      "init": function (manager) {
+        let entity_manager = manager.get('entity');
         entity_manager.add_text({
           id: "score",
           text: "score:",
@@ -492,7 +492,7 @@ let config_spec = {
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
-          update: function (delta, entity_manager) {
+          update: function (delta, manager) {
             if (score >= high_score) {
               this.color = "red";
             } else {
@@ -509,7 +509,7 @@ let config_spec = {
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
-          update: function (delta, entity_manager) {
+          update: function (delta, manager) {
             if (score >= high_score) {
               this.color = "red";
             } else {
@@ -526,7 +526,7 @@ let config_spec = {
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
-          update: function (delta, entity_manager) {
+          update: function (delta, manager) {
             if (rows_cleared >= high_rows) {
               this.color = "red";
             } else {
@@ -543,7 +543,7 @@ let config_spec = {
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
-          update: function (delta, entity_manager) {
+          update: function (delta, manager) {
             if (rows_cleared >= high_rows) {
               this.color = "red";
             } else {
@@ -553,7 +553,8 @@ let config_spec = {
           }
         });
       },
-      "deinit": function (entity_manager) {
+      "deinit": function (manager) {
+        let entity_manager = manager.get('entity');
         entity_manager.remove_text("score");
         entity_manager.remove_text("high_score");
         entity_manager.remove_text("rows_cleared");
