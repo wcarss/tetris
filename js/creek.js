@@ -1335,28 +1335,6 @@ let EntityManager = (function () {
 
 
 let AudioManager = (function () {
-// intended use:
-// resource manager creates audio elements from config urls, stores data about audio elements and urls and default state
-// setup:
-// audio_manager.load(data); -> sets initial state from audio elements of audio system
-//
-// single track:
-//
-// audio_manager.play("background_1") // un-pauses background_1
-// audio_manager.pause("background_1"); // pause background 1
-// audio_manager.stop("background_1"); // pause background_1, reset to 0
-// audio_manager.volume("background_1", 0.5); // sets volume of background_1 to 50%
-// audio_manager.loop("background_1", true) // set background_1 to loop
-// audio_manager.playing("background_1") // -> bool
-// audio_manager.get_volume("background_1") -> float 0.0 - 1.0
-// audio_manager.paused("background_1") // -> bool
-// audio_manager.looping("background_1") // -> bool
-//
-// all-track:
-//
-// audio_manager.pause_all(); // pauses all unpaused
-// audio_manager.stop_all(); // pauses all, resets all to 0
-// audio_manager.volume_all(level) // sets volume for all to level
   let clips = null,
     default_volume = null,
     resource_manager = null,
