@@ -374,7 +374,7 @@ let config_spec = {
         }
 
         entity_manager.move_entity(this, this.x, this.y);
-        entity_manager.get_camera_manager().center(-40, -40);
+        manager.get('camera').center(-40, -40);
       }
     }
   },
