@@ -1,41 +1,30 @@
 let GameManager = (function () {
-  let manager = null,
-    config_manager = null,
-    control_manager = null,
-    ui_manager = null,
-    player_manager = null,
-    map_manager = null,
-    entity_manager = null,
-    context_manager = null,
-    resource_manager = null,
-    render_manager = null,
-    physics_manager = null,
-    request_maanger = null,
+  let init = function () {
+    console.log("GameManager init.");
+    let config_manager = ConfigManager(),
+      manager = Manager();
 
-    init = function () {
-      console.log("GameManager init.");
-      config_manager = ConfigManager();
-      manager = Manager()
-      manager.init({
-        audio: AudioManager(),
-        camera: CameraManager(),
-        config: config_manager,
-        context: ContextManager(),
-        control: ControlManager(),
-        cookie: CookieManager(),
-        entity: EntityManager(),
-        game_state: config_manager.get_game_state(),
-        map: MapManager(),
-        physics: PhysicsManager(),
-        player: PlayerManager(),
-        render: RenderManager(),
-        request: RequestManager(),
-        resource: ResourceManager(),
-        ui: UIManager(),
-      });
-      manager.get('audio').load_clips(manager.get('resource').get_resources()['sound']);
-      manager.get('render').next_frame();
-    };
+    manager.init({
+      audio: AudioManager(),
+      camera: CameraManager(),
+      config: config_manager,
+      context: ContextManager(),
+      control: ControlManager(),
+      cookie: CookieManager(),
+      entity: EntityManager(),
+      game_state: config_manager.get_game_state(),
+      map: MapManager(),
+      physics: PhysicsManager(),
+      player: PlayerManager(),
+      render: RenderManager(),
+      request: RequestManager(),
+      resource: ResourceManager(),
+      ui: UIManager(),
+    });
+
+    manager.get('audio').load_clips(manager.get('resource').get_resources()['sound']);
+    manager.get('render').next_frame();
+  };
 
   return function () {
     return {
