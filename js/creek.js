@@ -1,5 +1,6 @@
 let GameManager = (function () {
-  let config_manager = null,
+  let manager = null,
+    config_manager = null,
     control_manager = null,
     ui_manager = null,
     player_manager = null,
@@ -11,69 +12,97 @@ let GameManager = (function () {
     physics_manager = null,
     request_maanger = null,
 
-    start_game = function () {
-      game_state.init(
-        entity_manager,
-        control_manager,
-        ui_manager,
-        map_manager,
-        player_manager,
-        request_manager
-      );
-      render_manager.next_frame();
-    },
     init = function () {
+      console.log("GameManager init.");
       config_manager = ConfigManager();
-      game_state = config_manager.get_game_state();
-
-      physics_manager = PhysicsManager();
-      control_manager = ControlManager();
-      request_manager = RequestManager();
-      ui_manager = UIManager(config_manager, control_manager);
-      context_manager = ContextManager(config_manager);
-      cookie_manager = CookieManager(config_manager);
-
-      map_manager = MapManager(config_manager);
-      player_manager = PlayerManager(config_manager, control_manager, map_manager);
-      camera_manager = CameraManager(config_manager, context_manager, map_manager);
-
-      resource_manager = ResourceManager(config_manager);
-      audio_manager = AudioManager(config_manager, resource_manager);
-      entity_manager = EntityManager(
-        control_manager,
-        player_manager,
-        camera_manager,
-        map_manager,
-        physics_manager,
-        game_state,
-        request_manager,
-        ui_manager,
-        cookie_manager,
-        audio_manager
-      );
-      render_manager = RenderManager(
-        config_manager,
-        context_manager,
-        resource_manager,
-        entity_manager,
-      );
-      audio_manager.load_clips(resource_manager.get_resources()['sound']);
+      manager = Manager()
+      manager.init({
+        audio: AudioManager(),
+        camera: CameraManager(),
+        config: config_manager,
+        context: ContextManager(),
+        control: ControlManager(),
+        cookie: CookieManager(),
+        entity: EntityManager(),
+        game_state: config_manager.get_game_state(),
+        map: MapManager(),
+        physics: PhysicsManager(),
+        player: PlayerManager(),
+        render: RenderManager(),
+        request: RequestManager(),
+        resource: ResourceManager(),
+        ui: UIManager(),
+      });
+      manager.get('audio').load_clips(manager.get('resource').get_resources()['sound']);
+      manager.get('render').next_frame();
     };
 
   return function () {
-    init();
-    console.log("GameManager init.");
-
     return {
-      start_game: start_game,
+      init: init,
     };
   };
 })();
 
 
+let Manager = (function () {
+  let managers = null;
+
+  let get = function (id) {
+    let manager = managers[id];
+    if (manager === undefined) {
+      console.log("Requested a manager that doesn't exist: '" + id + "'");
+      return undefined;
+    }
+    if (!manager.initialized) {
+      manager.initialized = true;
+      manager.manager.init(this);
+    }
+    return manager.manager;
+  };
+
+  let is_initialized = function (id) {
+    let manager = managers[id];
+    if (manager === undefined) {
+      console.log("Requested a manager that doesn't exist: '" + id + "'");
+      return undefined;
+    }
+    return manager.initialized;
+  };
+
+  let init = function (_managers) {
+    console.log("Manager manager init.");
+    let manager = null;
+
+    managers = {};
+
+    for (i in _managers) {
+      managers[i] = {
+        initialized: false,
+        manager: _managers[i],
+      };
+    }
+    for (i in managers) {
+      if (!managers[i].initialized) {
+        managers[i].initialized = true;
+        managers[i].manager.init(this);
+      }
+    }
+  };
+
+  return function () {
+    return {
+      get: get,
+      is_initialized: is_initialized,
+      init: init
+    };
+  };
+})();
+
 
 let ConfigManager = (function () {
-  let config = null,
+  let manager = null,
+    config = null,
     load = function (config_spec) {
       config = JSON.parse(config_spec);
       return config;
@@ -120,12 +149,17 @@ let ConfigManager = (function () {
       }
 
       return state;
+    },
+    init = function (_manager) {
+      console.log("ConfigManager init.");
+      manager = _manager;
     };
 
   config = config_spec;
 
   return function () {
     return {
+      init: init,
       get_config: get,
       set_config: set,
       get_player: get_player,
@@ -139,7 +173,8 @@ let ConfigManager = (function () {
 
 
 let RequestManager = (function () {
-  let data = null,
+  let manager = null,
+    data = null,
     _method = null,
     state = null,
     url = null,
@@ -223,15 +258,16 @@ let RequestManager = (function () {
 
       return id;
     },
-    init = function (_debug) {
-      debug = _debug;
+    init = function (_manager) {
+      console.log("RequestManager init.");
+      manager = _manager;
+      debug = manager.get('config')['request_debug'];
       requests = {};
     };
 
-  return function (_debug) {
-    init(_debug);
-
+  return function () {
     return {
+      init: init,
       get_data: get_data,
       get_request: get_request,
       get: get,
@@ -248,7 +284,8 @@ let RequestManager = (function () {
 
 
 let ContextManager = (function () {
-  let context = null,
+  let manager = null,
+    context = null,
     canvas = null,
     fullscreen = false,
     width = 0,
@@ -296,9 +333,11 @@ let ContextManager = (function () {
     max_width = function () {
       return document.body.clientWidth;
     },
-    init = function (config_manager) {
-      let config = config_manager.get_config();
-      canvas_id = config.canvas_id || "canvas";
+    init = function (_manager) {
+      console.log("ContextManager init.");
+      manager = _manager;
+      let config = manager.get('config').get_config(),
+      canvas_id = config.canvas_id || "canvas"
       stage_id = config.stage_id || "stage";
       width = config.width || max_width();
       height = config.height || max_height();
@@ -318,11 +357,9 @@ let ContextManager = (function () {
       set_canvas(canvas);
     };
 
-  return function (config_manager) {
-    init(config_manager);
-    console.log("ContextManager init.");
-
+  return function () {
     return {
+      init: init,
       get_context: get_context,
       get_canvas: get_canvas,
       set_context: set_context,
@@ -335,7 +372,8 @@ let ContextManager = (function () {
 
 
 let CookieManager = (function () {
-  let cookies = null,
+  let manager = null,
+    cookies = null,
     last_cookies = null,
     set_cookies = function (cookie_dict) {
       let cookie = null, value = null, output = null;
@@ -381,15 +419,15 @@ let CookieManager = (function () {
     get_cookies = function () {
       return cookies;
     },
-    init = function (config_manager) {
+    init = function (_manager) {
+      console.log("CookieManager init.");
+      manager = _manager;
       cookies = load_cookies();
     };
 
-  return function (config_manager) {
-    init(config_manager);
-    console.log("CookieManager init.");
-
+  return function () {
     return {
+      init: init,
       get_cookies: get_cookies,
       set_cookies: set_cookies
     };
@@ -398,8 +436,10 @@ let CookieManager = (function () {
 
 
 let CameraManager = (function () {
-  let camera = null,
+  let manager = null,
+    camera = null,
     map_manager = null,
+    context_manager = null,
     fullscreen = null,
     get_camera = function () {
       return camera;
@@ -448,18 +488,19 @@ let CameraManager = (function () {
       camera.inner_width = width / 2;
       camera.inner_height = height / 2;
     },
-    init = function (config_manager, _context_manager, _map_manager) {
+    init = function (_manager) {
       console.log("CameraManager init.");
+      manager = _manager;
 
-      let config = config_manager.get_config(),
+      let config = manager.get('config').get_config(),
         camera_config = config.camera,
         width = camera_config.width,
         height = camera_config.height;
 
       fullscreen = config.fullscreen || false;
 
-      map_manager = _map_manager;
-      context_manager = _context_manager;
+      map_manager = manager.get('map');
+      context_manager = manager.get('context');
 
       if (fullscreen) {
         width = context_manager.get_width();
@@ -482,10 +523,9 @@ let CameraManager = (function () {
       };
     };
 
-  return function (config_manager, _context_manager, _map_manager) {
-    init(config_manager, _context_manager, _map_manager);
-
+  return function () {
     return {
+      init: init,
       get_camera: get_camera,
       get_offset: get_offset,
       move: move,
@@ -498,7 +538,8 @@ let CameraManager = (function () {
 
 
 let ResourceManager = (function () {
-  let image_base_url = null,
+  let manager = null,
+    image_base_url = null,
     resources = {
       'image': {},
       'sound': {},
@@ -563,8 +604,10 @@ let ResourceManager = (function () {
       sound.src = resource.url;
       return promise;
     },
-    init = function (config) {
-      let parsed_resources = config.get_resources(),
+    init = function (_manager) {
+      console.log("ResourceManager init.");
+      manager = _manager;
+      let parsed_resources = manager.get('config').get_resources(),
         resource_promise = null,
         resource = null,
         promises = [];
@@ -597,11 +640,9 @@ let ResourceManager = (function () {
       );
     };
 
-  return function (config_manager) {
-    init(config_manager);
-    console.log("ResourceManager init.");
-
+  return function () {
     return {
+      init: init,
       get_resources: get_resources,
       get_image: get_image,
       get_sound: get_sound,
@@ -612,7 +653,8 @@ let ResourceManager = (function () {
 
 
 let ControlManager = (function () {
-  let controls = {
+  let manager = null,
+    controls = {
       buttons: {},
       mouse: {
         dragging_at: 0,
@@ -664,7 +706,10 @@ let ControlManager = (function () {
         }
       }
     },
-    init = function (_config) {
+    init = function (_manager) {
+      console.log("ControlManager init.");
+      manager = _manager;
+      let _config = manager.get('config');
       document.addEventListener("keydown", function (e) {
         if (controls[e.code] === undefined) {
           controls[e.code] = {};
@@ -708,11 +753,9 @@ let ControlManager = (function () {
       });
     };
 
-  return function (_config) {
-    init(_config);
-    console.log("ControlManager init.");
-
+  return function () {
     return {
+      init: init,
       get_controls: get_controls,
       add_button: add_button,
       remove_button: remove_button,
@@ -726,35 +769,9 @@ let ControlManager = (function () {
 
 
 
-let PatternManager = (function () {
-  let patterns = null,
-    init = function () {
-      patterns = {};
-    },
-    new_pattern = function (id) {
-      if (patterns[id] !== undefined) {
-        return null;
-      }
-
-      patterns[id] = {
-        // not sure about this whole deal
-      };
-    },
-    remove_pattern = function (id) {
-      patte
-    };
-
-  return function () {
-    init();
-
-    return {};
-  };
-})();
-
-
-
 let UIManager = (function () {
-  let buttons = null,
+  let manager = null,
+    buttons = null,
     control_manager = null,
     add_button = function (button) {
       /* button should be like: {
@@ -839,16 +856,17 @@ let UIManager = (function () {
     get_buttons = function () {
       return buttons;
     },
-    init = function (_config_manager, _control_manager) {
+    init = function (_manager) {
+      console.log("UIManager init.");
+      manager = _manager;
       buttons = {};
-      control_manager = _control_manager;
-      config = _config_manager.get_config()
+      control_manager = manager.get('control');
+      config = manager.get('config').get_config();
     };
 
-  return function (config_manager, control_manager) {
-    init(config_manager, control_manager);
-
+  return function () {
     return {
+      init: init,
       get_buttons: get_buttons,
       add_button: add_button,
       remove_button: remove_button,
@@ -859,7 +877,8 @@ let UIManager = (function () {
 
 
 let MapManager = (function () {
-  let maps = null,
+  let manager = null,
+    maps = null,
     loading = null,
     current_map_id = null,
     last_change_time = null,
@@ -946,9 +965,12 @@ let MapManager = (function () {
     is_loading = function () {
       return maps[current_map_id].loading;
     },
-    init = function (config_manager) {
-      config = config_manager.get_config();
-      map_sets = config_manager.get_maps();
+    init = function (_manager) {
+      console.log("MapManager init.");
+      manager = _manager;
+      let config_manager = manager.get('config'),
+        config = config_manager.get_config(),
+        map_sets = config_manager.get_maps()
       maps = map_sets.defined;
       loading = map_sets.loading;
       for (i in loading) {
@@ -963,11 +985,9 @@ let MapManager = (function () {
       last_change_time = 0;
     };
 
-  return function (_config) {
-    init(_config);
-    console.log("MapManager init.");
-
+  return function () {
     return {
+      init: init,
       get_entities: get_entities,
       change_maps: change_maps,
       get_map: get_map,
@@ -985,7 +1005,8 @@ let MapManager = (function () {
 
 
 let PlayerManager = (function () {
-  let player = null,
+  let manager = null,
+    player = null,
     get_player = function () {
       return player;
     },
@@ -995,15 +1016,15 @@ let PlayerManager = (function () {
     update = function (delta, entity_manager) {
       player.update(delta, entity_manager);
     },
-    init = function (config) {
-      player = config.get_player();
+    init = function (_manager) {
+      console.log("PlayerManager init.");
+      manager = _manager;
+      player = manager.get('config').get_player();
     };
 
-  return function (config, _controls, _map_manager) {
-    init(config, _controls, _map_manager);
-    console.log("PlayerManager init.");
-
+  return function () {
     return {
+      init: init,
       get_player: get_player,
       update: update,
       modify_player: modify_player,
@@ -1014,7 +1035,8 @@ let PlayerManager = (function () {
 
 
 let PhysicsManager = (function () {
-  let physics = null,
+  let manager = null,
+    physics = null,
     to_rect = function (entity) {
       return {
         'left': entity.x,
@@ -1042,16 +1064,16 @@ let PhysicsManager = (function () {
 
       return (rect_distance <= rect_one.collide_distance+rect_two.collide_distance);
     },
-    init = function () {
+    init = function (_manager) {
+      manager = _manager;
       console.log("PhysicsManager init.");
 
       physics = {};
     };
 
   return function () {
-    init();
-
     return {
+      init: init,
       physics: physics,
       collide: collide,
     };
@@ -1061,7 +1083,8 @@ let PhysicsManager = (function () {
 
 
 let EntityManager = (function () {
-  let entities = null,
+  let manager = null,
+    entities = null,
     texts = null,
     player = null,
     camera_manager = null,
@@ -1285,27 +1308,29 @@ let EntityManager = (function () {
         }
       }
     },
-    init = function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager, _audio_manager) {
-      controls = _controls;
-      let tp = player = _player;
-      camera_manager = _camera;
-      maps = _maps;
-      physics = _physics;
-      game_state = _game;
-      request_manager = _request;
-      ui_manager = _ui_manager;
-      cookie_manager = _cookie_manager;
-      audio_manager = _audio_manager;
+    init = function (_manager) {
+      console.log("EntityManager init.");
+      manager = _manager;
+      controls = manager.get('control');
+      let tp = player = manager.get('player');
+      camera_manager = manager.get('camera');
+      maps = manager.get('map');
+      physics = manager.get('physics');
+      request_manager = manager.get('request');
+      console.log("setting up the ui manager");
+      ui_manager = manager.get('ui');
+      cookie_manager = manager.get('cookie');
+      audio_manager = manager.get('audio');
+      game_state = manager.get('game_state');
       last_particle_added = performance.now();
       texts = [];
       setup_entities();
     };
 
-  return function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager, _audio_manager) {
-    init(_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager, _audio_manager);
-    console.log("EntityManager init.");
-
+  return function () {
+    console.log("instantiating the entity manager.");
     return {
+      init: init,
       get_entities: get_entities,
       get_entity: get_entity,
       get_player_manager: get_player_manager,
@@ -1335,7 +1360,8 @@ let EntityManager = (function () {
 
 
 let AudioManager = (function () {
-  let clips = null,
+  let manager = null,
+    clips = null,
     default_volume = null,
     resource_manager = null,
     currently_paused = null;
@@ -1521,16 +1547,17 @@ let AudioManager = (function () {
     }
   };
 
-  let init = function (config_manager, _resource_manager) {
-    default_volume = config_manager.get_config()['default_volume'] || 1;
+  let init = function (_manager) {
+    console.log("AudioManager init.");
+    manager = _manager;
+    default_volume = manager.get('config').get_config()['default_volume'] || 1;
     currently_paused = [];
-    resource_manager = _resource_manager;
+    resource_manager = manager.get('resource');
   };
 
-  return function (config, _resource_manager) {
-    init(config, _resource_manager);
-
+  return function () {
     return {
+      init: init,
       get_clip: get_clip,
       play: play,
       pause: pause,
@@ -1561,7 +1588,8 @@ let AudioManager = (function () {
 
 
 let RenderManager = (function () {
-  let context_manager = null,
+  let manager = null,
+    context_manager = null,
     frames_per_second = null,
     last_time = performance.now(),
     current_time = performance.now(),
@@ -1623,19 +1651,19 @@ let RenderManager = (function () {
 
       requestAnimationFrame(next_frame);
     },
-    init = function (config_manager, _context_manager, _resources, _entities) {
-      frames_per_second = config_manager.get_config()['frames_per_second'];
-      context_manager = _context_manager;
-      resources = _resources;
-      entities = _entities;
+    init = function (_manager) {
+      console.log("RenderManager init.");
+      manager = _manager;
+      frames_per_second = manager.get('config').get_config()['frames_per_second'];
+      context_manager = manager.get('context');
+      resources = manager.get('resource');
+      entities = manager.get('entity');
     };
 
-  return function (config, global_context, _resources, _entities) {
-    init(config, global_context, _resources, _entities);
-    console.log("RenderManager init.");
-
+  return function () {
     return {
+      init: init,
       next_frame: next_frame,
     };
-  }
+  };
 })();

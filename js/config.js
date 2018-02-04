@@ -1,9 +1,10 @@
 let last_debug_change = 0, debug = false, rows = null, paused = false, last_pause_call = 0, score = 0, rows_cleared = 0, high_score = 0, high_rows = 0;
 let config_spec = {
   "game": {
-    "init": function (entity_manager, control_manager, ui_manager, map_manager, player_manager, request_manager) {
-      this.player = player_manager.get_player();
-      map_manager.change_maps("intro", entity_manager);
+    "init": function (_manager) {
+      this.manager = _manager;
+      this.player = _manager.get('player').get_player();
+      _manager.get('map').change_maps("intro", _manager.get('entity'));
     },
     "update": function (delta, entity_manager) {
       let controls = entity_manager.get_control_manager(),
@@ -395,7 +396,7 @@ let config_spec = {
       "id": "intro",
       "player_layer": 2,
       "init": function (entity_manager) {
-        ui_manager = entity_manager.get_ui_manager();
+        let ui_manager = entity_manager.get_ui_manager();
 
         ui_manager.add_button({
           id: "start_game",
@@ -409,7 +410,7 @@ let config_spec = {
         console.log("map " + this.id + ": initialized");
       },
       "deinit": function (entity_manager) {
-        ui_manager = entity_manager.get_ui_manager();
+        let ui_manager = entity_manager.get_ui_manager();
         ui_manager.remove_button("start_game");
         console.log("map " + this.id + ": de-initialized");
       },
