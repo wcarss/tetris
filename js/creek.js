@@ -36,6 +36,9 @@ let GameManager = (function () {
       map_manager = MapManager(config_manager);
       player_manager = PlayerManager(config_manager, control_manager, map_manager);
       camera_manager = CameraManager(config_manager, context_manager, map_manager);
+
+      resource_manager = ResourceManager(config_manager);
+      audio_manager = AudioManager(config_manager, resource_manager);
       entity_manager = EntityManager(
         control_manager,
         player_manager,
@@ -45,16 +48,16 @@ let GameManager = (function () {
         game_state,
         request_manager,
         ui_manager,
-        cookie_manager
+        cookie_manager,
+        audio_manager
       );
-
-      resource_manager = ResourceManager(config_manager);
       render_manager = RenderManager(
         config_manager,
         context_manager,
         resource_manager,
         entity_manager,
       );
+      audio_manager.load_clips(resource_manager.get_resources()['sound']);
     };
 
   return function () {
@@ -506,6 +509,9 @@ let ResourceManager = (function () {
     get_image = function (name) {
       return resources['image'][name];
     },
+    get_sound = function (name) {
+      return resources['sound'][name];
+    },
     load_image = function (resource) {
       let img = new Image();
       let promise = new Promise(
@@ -532,8 +538,34 @@ let ResourceManager = (function () {
       img.src = resource.url;
       return promise;
     },
+    load_sound = function (resource) {
+      let sound = document.createElement("audio");
+      let promise = new Promise(
+        function (resolve, reject) {
+          sound.addEventListener("canplaythrough", function () {
+            console.log("sound " + resource.url + " loaded.");
+            sound.loop = resource.looping;
+            sound.muted = resource.muted;
+            sound.volume = resource.volume;
+            resolve({
+              type: resource.type,
+              id: resource.id,
+              url: resource.url,
+              element: sound,
+            });
+          }, false);
+          sound.addEventListener("error", function () {
+            console.log("sound " + resource.url + " failed to load.");
+            reject();
+          }, false);
+        }
+      );
+      sound.src = resource.url;
+      return promise;
+    },
     init = function (config) {
       let parsed_resources = config.get_resources(),
+        resource_promise = null,
         resource = null,
         promises = [];
 
@@ -542,6 +574,9 @@ let ResourceManager = (function () {
 
         if (resource.type === 'image') {
           resource_promise = load_image(resource);
+          promises.push(resource_promise);
+        } else if (resource.type === 'sound') {
+          resource_promise = load_sound(resource);
           promises.push(resource_promise);
         } else {
           console.log("tried to load unknown resource type: " + resource.type);
@@ -569,6 +604,7 @@ let ResourceManager = (function () {
     return {
       get_resources: get_resources,
       get_image: get_image,
+      get_sound: get_sound,
     };
   };
 })();
@@ -1031,6 +1067,7 @@ let EntityManager = (function () {
     camera_manager = null,
     request_manager = null,
     cookie_manager = null,
+    audio_manager = null,
     controls = null,
     maps = null,
     current_map_id = null,
@@ -1091,6 +1128,9 @@ let EntityManager = (function () {
     },
     get_cookie_manager = function () {
       return cookie_manager;
+    },
+    get_audio_manager = function () {
+      return audio_manager;
     },
     load_if_needed = function () {
       maps.load_if_needed();
@@ -1245,7 +1285,7 @@ let EntityManager = (function () {
         }
       }
     },
-    init = function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager) {
+    init = function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager, _audio_manager) {
       controls = _controls;
       let tp = player = _player;
       camera_manager = _camera;
@@ -1255,13 +1295,14 @@ let EntityManager = (function () {
       request_manager = _request;
       ui_manager = _ui_manager;
       cookie_manager = _cookie_manager;
+      audio_manager = _audio_manager;
       last_particle_added = performance.now();
       texts = [];
       setup_entities();
     };
 
-  return function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager) {
-    init(_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager);
+  return function (_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager, _audio_manager) {
+    init(_controls, _player, _camera, _maps, _physics, _game, _request, _ui_manager, _cookie_manager, _audio_manager);
     console.log("EntityManager init.");
 
     return {
@@ -1274,6 +1315,7 @@ let EntityManager = (function () {
       get_request_manager: get_request_manager,
       get_ui_manager: get_ui_manager,
       get_cookie_manager: get_cookie_manager,
+      get_audio_manager: get_audio_manager,
       stale_entities: stale_entities,
       setup_entities: setup_entities,
       update: update,
@@ -1286,6 +1328,254 @@ let EntityManager = (function () {
       remove_text: remove_text,
       remove_entity: remove_entity,
       load_if_needed: load_if_needed,
+    };
+  };
+})();
+
+
+
+let AudioManager = (function () {
+// intended use:
+// resource manager creates audio elements from config urls, stores data about audio elements and urls and default state
+// setup:
+// audio_manager.load(data); -> sets initial state from audio elements of audio system
+//
+// single track:
+//
+// audio_manager.play("background_1") // un-pauses background_1
+// audio_manager.pause("background_1"); // pause background 1
+// audio_manager.stop("background_1"); // pause background_1, reset to 0
+// audio_manager.volume("background_1", 0.5); // sets volume of background_1 to 50%
+// audio_manager.loop("background_1", true) // set background_1 to loop
+// audio_manager.playing("background_1") // -> bool
+// audio_manager.get_volume("background_1") -> float 0.0 - 1.0
+// audio_manager.paused("background_1") // -> bool
+// audio_manager.looping("background_1") // -> bool
+//
+// all-track:
+//
+// audio_manager.pause_all(); // pauses all unpaused
+// audio_manager.stop_all(); // pauses all, resets all to 0
+// audio_manager.volume_all(level) // sets volume for all to level
+  let clips = null,
+    default_volume = null,
+    resource_manager = null,
+    currently_paused = null;
+
+  let get_clip = function (clip_id) {
+      let sounds = null;
+      if (clips === null) {
+        sounds = resource_manager.get_resources()['sound'];
+        if (!sounds || empty_dict(sounds)) {
+          console.log("clips haven't loaded yet!");
+          return null;
+        } else {
+          load_clips(sounds);
+        }
+      }
+      if (!clips[clip_id]) {
+        console.log("attempting to get clip: " + clip_id + " that wasn't found in clips");
+      }
+      return clips[clip_id];
+    },
+    play = function (clip_id) {
+      let clip = get_clip(clip_id);
+      clip.play();
+    },
+    pause = function (clip_id) {
+      let clip = get_clip(clip_id);
+      clip.pause();
+    },
+    stop = function (clip_id) {
+      let clip = get_clip(clip_id);
+      clip.stop();
+    },
+    volume = function (clip_id, level) {
+      let clip = get_clip(clip_id);
+      clip.volume(level);
+    },
+    set_time = function (clip_id, time) {
+      let clip = get_clip(clip_id);
+      clip.set_time(time);
+    },
+    mute = function (clip_id) {
+      let clip = get_clip(clip_id);
+      clip.mute();
+    },
+    unmute = function (clip_id) {
+      let clip = get_clip(clip_id);
+      clip.unmute();
+    },
+    loop = function (clip_id, looping_bool) {
+      let clip = get_clip(clip_id);
+      clip.loop(looping_bool);
+    },
+    playing = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.playing();
+    },
+    paused = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.paused();
+    },
+    get_volume = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.get_volume();
+    },
+    get_time = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.get_time();
+    },
+    muted = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.muted();
+    },
+    looping = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.looping();
+    },
+    duration = function (clip_id) {
+      let clip = get_clip(clip_id);
+      return clip.duration();
+    },
+    pause_all = function () {
+      for (i in clips) {
+        if (clips[i].playing()) {
+          clips[i].pause();
+          currently_paused.push(clips[i].id);
+        }
+      }
+    },
+    unpause_all = function () {
+      for (i in currently_paused) {
+        get_clip(currently_paused[i]).play();
+      }
+      currently_paused = [];
+    },
+    stop_all = function () {
+      for (i in clips) {
+        clips[i].stop();
+      }
+    },
+    volume_all = function (level) {
+      for (i in clips) {
+        clips[i].volume(level);
+      }
+    },
+    mute_all = function (level) {
+      for (i in clips) {
+        clips[i].mute();
+      }
+    },
+    unmute_all = function (level) {
+      for (i in clips) {
+        clips[i].unmute();
+      }
+    };
+
+  let load_clips = function (loaded_clips) {
+    let clip = null;
+
+    for (i in loaded_clips) {
+      clip_data = loaded_clips[i];
+      console.log("loading clip " + clip_data.id);
+      clip = {
+        url: clip_data.url,
+        id: clip_data.id,
+        element: clip_data.element,
+        play: function () {
+          this.element.play();
+        },
+        pause: function () {
+          this.element.pause();
+        },
+        stop: function () {
+          this.element.pause();
+          this.element.currentTime = 0;
+        },
+        volume: function (level) {
+          this.element.volume = level;
+        },
+        set_time: function (time) {
+          this.element.currentTime = time;
+        },
+        mute: function () {
+          this.element.mute = true;
+        },
+        unmute: function () {
+          this.element.mute = false;
+        },
+        loop: function (looping_bool) {
+          this.element.loop = looping_bool;
+        },
+        playing: function () {
+          return !this.element.paused;
+        },
+        paused: function () {
+          return this.element.paused;
+        },
+        get_volume: function () {
+          return this.element.volume;
+        },
+        get_time: function () {
+          return this.element.currentTime;
+        },
+        muted: function () {
+          return this.element.muted;
+        },
+        looping: function () {
+          return this.element.looping;
+        },
+        duration: function () {
+          return this.element.duration;
+        }
+      }
+
+      if (clips && clips[clip.id]) {
+        console.log("attempted to load multiple identical clip ids");
+        clip.id = clip.id + "_" + timestamp_id();
+      }
+
+      if (clips === null) {
+        clips = {};
+      }
+      clips[clip.id] = clip;
+    }
+  };
+
+  let init = function (config_manager, _resource_manager) {
+    default_volume = config_manager.get_config()['default_volume'] || 1;
+    currently_paused = [];
+    resource_manager = _resource_manager;
+  };
+
+  return function (config, _resource_manager) {
+    init(config, _resource_manager);
+
+    return {
+      get_clip: get_clip,
+      play: play,
+      pause: pause,
+      stop: stop,
+      volume: volume,
+      set_time: set_time,
+      mute: mute,
+      unmute: unmute,
+      loop: loop,
+      playing: playing,
+      paused: paused,
+      get_volume: get_volume,
+      get_time: get_time,
+      muted: muted,
+      looping: looping,
+      duration: duration,
+      pause_all: pause_all,
+      unpause_all: unpause_all,
+      stop_all: stop_all,
+      volume_all: volume_all,
+      mute_all: mute_all,
+      unmute_all: unmute_all,
+      load_clips: load_clips,
     };
   };
 })();

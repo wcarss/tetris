@@ -78,6 +78,10 @@ function throttle(func, wait) {
   };
 }
 
+function empty_dict(d) {
+  return Object.keys(d).length === 0;
+}
+
 function timestamp_id (delimiter, resolution) {
   delimiter = delimiter || "_";
   resolution = resolution !== 0 ? (resolution || 3) : 0;
