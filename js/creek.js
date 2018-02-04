@@ -1077,10 +1077,6 @@ let EntityManager = (function () {
     texts = null,
     player = null,
     camera_manager = null,
-    request_manager = null,
-    cookie_manager = null,
-    audio_manager = null,
-    controls = null,
     maps = null,
     current_map_id = null,
     physics = null,
@@ -1090,7 +1086,6 @@ let EntityManager = (function () {
     game_state = null,
     last_loading = null,
     just_loaded = null,
-    ui_manager = null,
     stale_entities = function () {
       let debug = true;
       let loading = maps.is_loading();
@@ -1119,30 +1114,6 @@ let EntityManager = (function () {
           return entities[i];
         }
       }
-    },
-    get_player_manager = function () {
-      return player;
-    },
-    get_map_manager = function () {
-      return maps;
-    },
-    get_control_manager = function () {
-      return controls;
-    },
-    get_camera_manager = function () {
-      return camera_manager;
-    },
-    get_request_manager = function () {
-      return request_manager;
-    },
-    get_ui_manager = function () {
-      return ui_manager;
-    },
-    get_cookie_manager = function () {
-      return cookie_manager;
-    },
-    get_audio_manager = function () {
-      return audio_manager;
     },
     load_if_needed = function () {
       maps.load_if_needed();
@@ -1300,16 +1271,11 @@ let EntityManager = (function () {
     init = function (_manager) {
       console.log("EntityManager init.");
       manager = _manager;
-      controls = manager.get('control');
       let tp = player = manager.get('player');
       camera_manager = manager.get('camera');
       maps = manager.get('map');
       physics = manager.get('physics');
-      request_manager = manager.get('request');
       console.log("setting up the ui manager");
-      ui_manager = manager.get('ui');
-      cookie_manager = manager.get('cookie');
-      audio_manager = manager.get('audio');
       game_state = manager.get('game_state');
       last_particle_added = performance.now();
       texts = [];
@@ -1322,14 +1288,6 @@ let EntityManager = (function () {
       init: init,
       get_entities: get_entities,
       get_entity: get_entity,
-      get_player_manager: get_player_manager,
-      get_map_manager: get_map_manager,
-      get_control_manager: get_control_manager,
-      get_camera_manager: get_camera_manager,
-      get_request_manager: get_request_manager,
-      get_ui_manager: get_ui_manager,
-      get_cookie_manager: get_cookie_manager,
-      get_audio_manager: get_audio_manager,
       stale_entities: stale_entities,
       setup_entities: setup_entities,
       update: update,
@@ -1624,7 +1582,7 @@ let RenderManager = (function () {
       let delta = ((current_time - last_time)/1000) * frames_per_second;
       last_time = current_time;
 
-      let world_offset = entities.get_camera_manager().get_offset(),
+      let world_offset = manager.get('camera').get_offset(),
         draw_list = entities.get_entities(),
         text_list = entities.get_texts(),
         context = context_manager.get_context();
