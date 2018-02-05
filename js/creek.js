@@ -71,12 +71,6 @@ let Manager = (function () {
         manager: _managers[i],
       };
     }
-    for (i in managers) {
-      if (!managers[i].initialized) {
-        managers[i].initialized = true;
-        managers[i].manager.init(this);
-      }
-    }
   };
 
   return function () {
