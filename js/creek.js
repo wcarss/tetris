@@ -799,7 +799,6 @@ let UIManager = (function () {
       if (button.style) {
         style_string += button.style;
       }
-      console.log(button.id + " style is: " + style_string);
       element.style = style_string;
       element.innerHTML = button.text;
       element.id = button.id;
