@@ -562,19 +562,6 @@ let ResourceManager = (function () {
       img.src = resource.url;
       return promise;
     },
-    load_sound_immediate = function (resource) {
-      let sound = document.createElement("audio");
-      sound.loop = resource.looping;
-      sound.muted = resource.muted;
-      sound.volume = resource.volume;
-      sound.src = resource.url;
-      resources[resource.type][resource.id] = {
-        type: resource.type,
-        id: resource.id,
-        url: resource.url,
-        element: sound,
-      }
-    },
     load_sound = function (resource) {
       let sound = document.createElement("audio");
       let promise = new Promise(
@@ -587,9 +574,6 @@ let ResourceManager = (function () {
               url: resource.url,
               element: sound,
             });
-          }, false);
-          sound.addEventListener("canplaythrough", function () {
-            console.log("sound " + resource.url + " now can play through.");
           }, false);
           sound.addEventListener("error", function () {
             console.log("sound " + resource.url + " failed to load.");
@@ -619,7 +603,6 @@ let ResourceManager = (function () {
           resource_promise = load_image(resource);
           promises.push(resource_promise);
         } else if (resource.type === 'sound') {
-          //load_sound_immediate(resource);
           resource_promise = load_sound(resource);
           promises.push(resource_promise);
         } else {
