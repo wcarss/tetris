@@ -101,7 +101,7 @@ function hydrate_shape(shape_name) {
       x_scale: 1, y_scale: 1,
       layer: 1,
       active: true,
-      id: "piece-" + timestamp_id().slice(-7),
+      id: "piece-" + tile_index + timestamp_id().slice(-7),
       type: "piece",
       img: null, // gonna have to think about this
       rel_x: tile[0],
@@ -154,6 +154,16 @@ function hydrate_shape(shape_name) {
         }
       }
     });
+  }
+
+  let tpiece = null, piece_index = null, uniquer = {};
+  for (piece_index in shape.pieces) {
+    tpiece = shape.pieces[piece_index];
+    if (uniquer[tpiece.id] === 1) {
+      console.log("duplicate piece id detected");
+      debugger;
+    }
+    uniquer[tpiece.id] = 1;
   }
 
   return shape;

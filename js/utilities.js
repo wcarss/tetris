@@ -85,7 +85,10 @@ function empty_dict(d) {
 function timestamp_id (delimiter, resolution) {
   delimiter = delimiter || "_";
   resolution = resolution !== 0 ? (resolution || 3) : 0;
-  let id = (performance.timing.navigationStart+performance.now()).toFixed(resolution).split(".").join(delimiter);
+  let time = performance.timing.navigationStart+performance.now(),
+    random = Math.floor(Math.random() * 100);
+  time += random;
+  let id = (time).toFixed(resolution).split(".").join(delimiter);
 //  console.log("generated timestamp_id: " + id);
   return id;
 }
