@@ -1,3 +1,4 @@
+"use strict";
 let last_debug_change = 0, debug = false, rows = null, paused = false, last_pause_call = 0, score = 0, rows_cleared = 0, high_score = 0, high_rows = 0;
 let config_spec = {
   "game": {
@@ -17,7 +18,13 @@ let config_spec = {
         shape = null, first_color = null, color = null, piece = null,
         offset_x = 40, offset_y = 40,
         cookies = null,
-        pieces = null;
+        pieces = null,
+        next_index = null,
+        piece_index = null,
+        shape_piece_index = null,
+        x_index = null,
+        y_index = null,
+        entity = null;
 
       if (player.shape && player.shape.state === "done") {
         return;
@@ -51,7 +58,7 @@ let config_spec = {
 
       if (controls.keys('Backquote') && controls.keys('ShiftLeft')) {
         last_pause_call = performance.now();
-        c = controls.get_controls();
+        let c = controls.get_controls();
         delete c['Backquote'];
         delete c['ShiftLeft'];
         debugger;
@@ -123,7 +130,7 @@ let config_spec = {
           player.next_shape.state = "next";
           player.next_shape.last_x = player.next_shape.x = 440;
           player.next_shape.last_y = player.next_shape.y = 88;
-          let color = get_random_piece_color();
+          color = get_random_piece_color();
           for (next_index in player.next_shape.pieces) {
             piece = player.next_shape.pieces[next_index];
             piece.img = color;
@@ -156,8 +163,8 @@ let config_spec = {
             high_score = score;
           }
           console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
-          for (i in player.shape.pieces) {
-            piece = player.shape.pieces[i];
+          for (shape_piece_index in player.shape.pieces) {
+            piece = player.shape.pieces[shape_piece_index];
             x_index = Math.round((piece.x - offset_x) / piece.x_size);
             y_index = Math.round((piece.y - offset_y) / piece.y_size);
             x_index = clamp(x_index, 0, 9);
@@ -172,10 +179,10 @@ let config_spec = {
             }
             rows[y_index][x_index] = piece.id;
           }
-          for (ii = 17; ii >= 0; ii--) {
+          for (let ii = 17; ii >= 0; ii--) {
             if (rows[ii] !== null) {
 
-              for (j = 0; j < 10; j++) {
+              for (let j = 0; j < 10; j++) {
                 if (!rows[ii][j]) {
                   break;
                 }
@@ -193,7 +200,7 @@ let config_spec = {
                     high_score = score;
                   }
 //                function clear_row_and_copy_others_down(i) {}
-                  for (l = 0; l < 10; l++) {
+                  for (let l = 0; l < 10; l++) {
                     if (rows[ii] === null) {
                       console.log('what the heck');
                       debugger;
@@ -201,13 +208,13 @@ let config_spec = {
                       entity_manager.remove_entity(rows[ii][l]);
                     }
                   }
-                  for (k = ii; k > 0; k--) {
+                  for (let k = ii; k > 0; k--) {
                     rows[k] = rows[k-1];
                     if (!rows[k]) {
                       // if the next row is null, skip it
                       continue;
                     }
-                    for (l = 0; l < 10; l++) {
+                    for (let l = 0; l < 10; l++) {
                       // need to also actually move all of those pieces
                       if (rows[k][l]) {
                         entity = entity_manager.get_entity(rows[k][l]);

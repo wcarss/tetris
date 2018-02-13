@@ -1,3 +1,4 @@
+"use strict";
 function build_quadtree(x, y, width, height, leaf_size) {
   // - this definition is the structure of each tree node
   // - they all have an x,y position and a width/height, which is their bounds
@@ -22,10 +23,12 @@ function build_quadtree(x, y, width, height, leaf_size) {
     bottom_right: null,
     bottom_left: null,
   };
+  let half_width = 0,
+    half_height = 0;
 
   if (width > leaf_size && height > leaf_size) {
-    let half_width = width/2,
-      half_height = height/2;
+    half_width = width/2,
+    half_height = height/2;
 
     tree.bottom_right = build_quadtree(
       x+half_width, y+half_height, half_width, half_height, leaf_size);
@@ -117,7 +120,9 @@ function quadtree_print_tree_alt (tree, depth) {
 function quadtree_print_node (tree, depth) {
   // printing the node-path would be an interesting extension
   let entity = null,
-    prepend = "";
+    prepend = "",
+    i = null,
+    ei = null;
 
   depth = depth || 1;
 
@@ -128,8 +133,8 @@ function quadtree_print_node (tree, depth) {
 
     console.log("depth " + depth + ":" + prepend + "x, y: (" + tree.x + ", " + tree.y + ") to (" + parseInt(tree.x+tree.width) + ", " + parseInt(tree.y+tree.height) + ") dim: [" + tree.width + " x " + tree.height + "]");
 
-    for (i in tree.entities) {
-        entity = tree.entities[i];
+    for (ei in tree.entities) {
+        entity = tree.entities[ei];
         console.log("depth " + depth + ":  " + prepend + entity.id + ": (" + entity.x + ", " + entity.y + ")");
     }
   }
@@ -220,7 +225,8 @@ function quadtree_range_check_corners (tree, x, y, x2, y2) {
 function quadtree_insert (tree, entity) {
   // insert at correct leaf, use entity's x+y
   let x = entity.x,
-    y = entity.y;
+    y = entity.y,
+    corner = null;
 
   if (tree.entities !== null) {
     return tree.entities.push(entity);
@@ -236,6 +242,7 @@ function quadtree_insert (tree, entity) {
 function quadtree_get_by_id (tree, entity_id) {
   // return entity from leaf by its id
   // this is a slow bear
+  let i = null;
 
   if (tree.entities !== null) {
     for (i in tree.entities) {
@@ -271,16 +278,26 @@ function quadtree_get_by_id (tree, entity_id) {
 
 function quadtree_get_by_coords (tree, x, y) {
   // return entities from leaf by their coords
-  let epsilon = 0.01;
+  let epsilon = 0.01,
+    corner = null,
+    high_x = 0,
+    low_x = 0,
+    high_y = 0,
+    low_y = 0,
+    entity_list = [],
+    e = null,
+    i = null,
+    corner = null;
+
   if (tree.entities !== null) {
-    let high_x = x + epsilon,
-      low_x = x - epsilon,
-      high_y = y + epsilon,
-      low_y = y - epsilon,
-      entity_list = [];
+    high_x = x + epsilon;
+    low_x = x - epsilon;
+    high_y = y + epsilon;
+    low_y = y - epsilon;
+    entity_list = [];
 
     for (i in tree.entities) {
-      let e = tree.entities[i];
+      e = tree.entities[i];
       if (high_x > e.x && low_x < e.x && high_y > e.y && low_y < e.y) {
         entity_list.push(e);
       }
@@ -288,11 +305,13 @@ function quadtree_get_by_coords (tree, x, y) {
     return entity_list;
   }
 
-  let corner = quadtree_get_corner(tree, x, y);
+  corner = quadtree_get_corner(tree, x, y);
   return quadtree_get_by_coords(corner, x, y);
 }
 
 function quadtree_remove_by_id (tree, entity_id) {
+  let i = null;
+
   // remove entity by its id
   // return entity from leaf by its id
   if (tree.entities !== null) {
@@ -331,13 +350,20 @@ function quadtree_get_by_range (tree, x, y, x2, y2) {
   // return entities from leaf by coord
   // return entities from leaf by their coords
   let epsilon = 0.01,
-    entity_list = [];
+    entity_list = [],
+    high_x = 0,
+    low_x = 0,
+    high_y = 0,
+    low_y = 0,
+    corners = null,
+    e = null,
+    i = null;
 
   if (tree.entities !== null) {
-    let high_x = Math.max(x, x2) + epsilon,
-      low_x = Math.min(x, x2) - epsilon,
-      high_y = Math.max(y, y2) + epsilon,
-      low_y = Math.min(y, y2) - epsilon;
+    high_x = Math.max(x, x2) + epsilon,
+    low_x = Math.min(x, x2) - epsilon,
+    high_y = Math.max(y, y2) + epsilon,
+    low_y = Math.min(y, y2) - epsilon;
 
     for (i in tree.entities) {
       e = tree.entities[i];
@@ -349,7 +375,7 @@ function quadtree_get_by_range (tree, x, y, x2, y2) {
     return entity_list;
   }
 
-  let corners = quadtree_range_check_corners(tree, x, y, x2, y2);
+  corners = quadtree_range_check_corners(tree, x, y, x2, y2);
   if (corners.bottom_right) {
     entity_list = entity_list.concat(quadtree_get_by_range(tree.bottom_right, x, y, x2, y2));
   }
@@ -370,14 +396,22 @@ function quadtree_remove_by_range (tree, x, y, x2, y2) {
   // remove entities by coord range
 
   let epsilon = 0.01,
-    entity_list = [];
+    high_x = 0,
+    low_x = 0,
+    high_y = 0,
+    low_y = 0,
+    entity_list = [],
+    e = null,
+    i = null,
+    ri = null,
+    corners = null;
 
   if (tree.entities !== null) {
-    let high_x = Math.max(x, x2) + epsilon,
-      low_x = Math.min(x, x2) - epsilon,
-      high_y = Math.max(y, y2) + epsilon,
-      low_y = Math.min(y, y2) - epsilon,
-      to_splice = [];
+    high_x = Math.max(x, x2) + epsilon;
+    low_x = Math.min(x, x2) - epsilon;
+    high_y = Math.max(y, y2) + epsilon;
+    low_y = Math.min(y, y2) - epsilon;
+    to_splice = [];
 
     for (i in tree.entities) {
       e = tree.entities[i];
@@ -389,14 +423,14 @@ function quadtree_remove_by_range (tree, x, y, x2, y2) {
     // must walk backward over the list after finding, because
     // indices would shift if you walk forward or delete-as-you-go
     // also, record ids as we splice
-    for (i = to_splice.length-1; i >= 0; i--) {
-      entity_list.push(tree.entities.splice(to_splice[i], 1)[0]);
+    for (ri = to_splice.length-1; ri >= 0; ri--) {
+      entity_list.push(tree.entities.splice(to_splice[ri], 1)[0]);
     }
 
     return entity_list;
   }
 
-  let corners = quadtree_range_check_corners(tree, x, y, x2, y2);
+  corners = quadtree_range_check_corners(tree, x, y, x2, y2);
   if (corners.bottom_right) {
     entity_list = entity_list.concat(quadtree_remove_by_range(tree.bottom_right, x, y, x2, y2));
   }

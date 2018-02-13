@@ -1,3 +1,4 @@
+"use strict";
 function random_int(low, high) {
   if (high === undefined) {
     high = low;
@@ -17,7 +18,7 @@ function deg_to_rad(degrees) {
 
 function rotate_coordinates(x, y, angle) {
   let rads = deg_to_rad(angle),
-    new_x = Math.round(Math.cos(rads) * x - Math.sin(rads) * y);
+    new_x = Math.round(Math.cos(rads) * x - Math.sin(rads) * y),
     new_y = Math.round(Math.sin(rads) * x + Math.cos(rads) * y);
 
   return {
@@ -47,7 +48,9 @@ function clamp(val, low, high, epsilon, debug) {
 }
 
 function log_all(pre_message, hash) {
-  str = "";
+  let str = "",
+    k = null;
+
   if (pre_message !== undefined) {
     str += pre_message + " -- ";
   }
@@ -68,9 +71,9 @@ function console_log(msg) {
 }
 
 function throttle(func, wait) {
-  var last_time = null;
+  let last_time = null;
   return function() {
-    var now = performance.now();
+    let now = performance.now();
     if (last_time === null || now - last_time >= wait) {
       last_time = now;
       func.apply(this, arguments);

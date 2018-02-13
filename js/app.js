@@ -1,5 +1,8 @@
+"use strict";
 function rotate_shape(shape, direction) {
-  let box = null, new_coordinates = null;
+  let i = null,
+    box = null,
+    new_coordinates = null;
 
   for (i in shape.pieces) {
     box = shape.pieces[i];
@@ -31,7 +34,7 @@ function get_random_piece_color() {
  *    ...
  *  ]}    
 */
-var shapes = {
+let shapes = {
   triforce: [[-1, 0], [0, 0], [1,  0], [0,  1]],
   line:     [[-1, 0], [0, 0], [1,  0], [2,  0]],
   box:      [[ 0, 0], [0, 1], [1,  0], [1,  1]],
@@ -41,7 +44,7 @@ var shapes = {
   right:    [[-1, 0], [0, 0], [1,  0], [1,  1]]
 };
 
-var shape_names = [
+let shape_names = [
   'triforce',
   'line',
   'box',
@@ -52,8 +55,10 @@ var shape_names = [
 ];
 
 function hydrate_shape(shape_name) {
-  let tile = null,
-    spec = shapes[shape_name];
+  let i = null,
+    tile = null,
+    tile_index = null,
+    spec = shapes[shape_name],
     shape = {
       x: 0, y: 0,
       name: shape_name,
@@ -111,6 +116,7 @@ function hydrate_shape(shape_name) {
       update: function (delta, manager) {
         let collisions = null, entity = null, epsilon = 2;
         let entity_manager = manager.get('entity');
+        let i = null;
 
         if (!this.active) {
           return;
@@ -179,6 +185,6 @@ function get_random_shape(index) {
 
 
 window.addEventListener("load", function () {
-  game_manager = GameManager();
+  let game_manager = GameManager();
   game_manager.init();
 });
