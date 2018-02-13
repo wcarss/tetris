@@ -211,7 +211,16 @@ let config_spec = {
                       // need to also actually move all of those pieces
                       if (rows[k][l]) {
                         entity = entity_manager.get_entity(rows[k][l]);
-                        entity_manager.move_entity(entity, entity.x, entity.y+entity.y_size);
+                        if (entity) {
+                          entity_manager.move_entity(
+                            entity,
+                            entity.x,
+                            entity.y+entity.y_size
+                          );
+                        } else {
+                          console.log("rows[k][l] was true, but entity is not. debugger time!");
+                          debugger;
+                        }
                       }
                     }
                   }
@@ -325,7 +334,7 @@ let config_spec = {
       if (map_manager.get_current_map_id() === "intro" || this.paused) {
       } else if (map_manager.get_current_map_id() === "play_area") {
         if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space')) {
-          if (!this.last_rotated || (performance.now() - this.last_rotated) > 150) {
+          if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
             rotate_shape(this.shape, 90);
             this.last_rotated = performance.now();
           }
