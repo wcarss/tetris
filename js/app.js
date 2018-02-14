@@ -64,38 +64,8 @@ function hydrate_shape(shape_name) {
       name: shape_name,
       pieces: [],
       state: "falling",
-      moved_count: 0,
-      moved: {},
       lowest_x: 0, highest_x: 0,
       lowest_y: 0, highest_y: 0,
-      halt: function (manager) {
-        let piece = null, reset = null;
-        console_log("halting shape at x,y: " + this.x + "," + this.y + " w/ state: " + this.state);
-
-        for (i in this.pieces) {
-          piece = this.pieces[i];
-          if (this.moved[piece.id]) {
-            reset = true;
-            console_log("calling halt for piece " + piece.id + " && setting reset");
-          } else {
-            console_log("calling halt for piece " + piece.id + " && NOT setting reset");
-          }
-          this.pieces[i].halt(manager, reset);
-          reset = false;
-        }
-
-        this.state = "static";
-      },
-      track_movement: function (id) {
-        this.moved_count += 1;
-        this.moved[id] = true;
-        if (this.moved_count > 3) {
-          /* > 2 indicates all pieces moved successfully */
-          this.moved_count = 0;
-          this.moved = {};
-          console_log("resetting this.moved in track_movement");
-        }
-      }
     };
 
   for (tile_index in spec) {
@@ -116,48 +86,7 @@ function hydrate_shape(shape_name) {
       update: function (delta, manager) {
         let collisions = null, entity = null, epsilon = 2;
         let entity_manager = manager.get('entity');
-        let i = null;
-
-        if (!this.active) {
-          return;
-        }
-
-        if (this.state === "falling") {
-          this.last_x = this.x
-          this.last_y = this.y;
-          this.x = Math.floor(this.shape.x) + this.rel_x * this.x_size;
-          this.y = Math.floor(this.shape.y) + this.rel_y * this.y_size;
-          collisions = entity_manager.collide(this);
-          for (i in collisions) {
-            entity = collisions[i];
-            if (entity.type && entity.type === "piece" && entity.state !== "falling") {
-              if (entity.x-epsilon < this.x && entity.x + epsilon > this.x && entity.y > this.y+15) {
-                console_log("issuing shape halt from piece " + this.id + " at " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y);
-                this.x = this.last_x;
-                this.y = this.last_y;
-                this.shape.halt(manager);
-                return;
-              }
-            }
-          }
-          console_log("moving piece " + this.id + " to " + this.x + "," + this.y + " w/ lx,ly: " + this.last_x + "," + this.last_y); 
-          this.shape.track_movement(this.id);
-          entity_manager.move_entity(this, this.x, this.y);
-        }
-      },
-      halt: function (manager, reset) {
-        this.shape = null;
-        if (this.state !== "static") {
-          this.state = "static";
-          if (reset) {
-            console_log("halting & resetting piece: " + this.id + " - x,y: " + this.x + "," + this.y + " && lx,ly: " + this.last_x + "," + this.last_y);
-            this.x = this.last_x;
-            this.y = this.last_y;
-            manager.get('entity').move_entity(this, this.x, this.y);
-          } else {
-            console_log("halting & not resetting piece: " + this.id + " - x,y: " + this.x + "," + this.y);
-          }
-        }
+        entity_manager.move_entity(this, this.x, this.y);
       }
     });
   }

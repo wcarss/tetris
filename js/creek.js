@@ -1059,8 +1059,191 @@ let PhysicsManager = (function () {
       let rect_one = to_rect(entity_one),
         rect_two = to_rect(entity_two),
         rect_distance = distance(rect_one, rect_two, debug);
+      if (debug) {
+        console.log("distance to collide: " + rect_one.collide_distance+rect_two.collide_distance);
+        console.log("distance is " + rect_distance);
+      }
 
       return (rect_distance <= rect_one.collide_distance+rect_two.collide_distance);
+    },
+    parallel_line_intersect = function (one_low, one_high, two_low, two_high) {
+      /* I'm really reinventing the wheel here!
+       *
+       * For the purpose of these diagrams, lower absolute value
+       * (not magnitude) is on the left, higher is on the right.
+       *
+       * e.g.:
+       *
+       *   low --------- high
+       *
+       * Return codes are as follows:
+       *
+       * "below": one does not intersect two, and is below it
+       *
+       *   |--one--|  |--two--|
+       *
+       * "above": one does not intersect two, and is above it
+       *
+       *   |--two--|  |--one--|
+       *
+       * "low": one intersects only the lower bound of two
+       *
+       *   |--one--|
+       *       |--two--|
+       *
+       *   or
+       *
+       *   |--one--|
+       *           |--two--|
+       *
+       *   or
+       *
+       *   |--one--|
+       *   |---two---|
+       *
+       * "middle": one intersects two, but not either bound of two,
+       *           one is "contained within" two
+       *
+       *    |--one--|
+       *   |---two---|
+       *
+       *   or
+       *
+       * "equal": one and two are equivalent
+       *
+       *   |--one--|
+       *   |--two--|
+       *
+       * "high": one intersects only the higher bound of two
+       *
+       *       |--one--|
+       *   |--two--|
+       *
+       *   or
+       *
+       *   |--two--|
+       *           |--one--|
+       *
+       *   or
+       *
+       *     |--one--|
+       *   |---two---|
+       *
+       * "whole": one intersects both bounds of two,
+       *          one "contains" two
+       *
+       *   |---one---|
+       *    |--two--|
+       *
+       *   or
+       *
+       *   |---one---|
+       *   |--two--|
+       *
+       *   or
+       *
+       *   |---one---|
+       *     |--two--|
+       *
+       * error: NaN or undefined values, and/or
+       *        low > high for one and/or
+       *        low > high for two
+       *
+       */
+
+      if (one_high < two_low) {
+        return "below";
+      }
+
+      if (one_low > two_high) {
+        return "above";
+      }
+
+      if (one_low === two_low && one_high === two_high) {
+        return "equal";
+      }
+
+      if (one_low <= two_low && one_high < two_high && one_high >= two_low) {
+        // not assuming one_high >= two_low in case conditions order is shuffled
+        return "low";
+      }
+
+      if (one_low > two_low && one_high < two_high) {
+        return "middle";
+      }
+
+      if (one_low > two_low && one_high >= two_high && one_low <= two_high) {
+        // not assuming one_low <= two_high in case conditions order is shuffled
+        return "high";
+      }
+
+      if (one_low <= two_low && one_high >= two_high && !(one_low === two_low && one_high === two_high)) {
+        // not assuming one_low !(one_low === two_low && one_high === two_high)
+        // in case conditions order is shuffled
+        return "whole";
+      }
+
+      return "error";
+    },
+    directional_collide = function (one, two) {
+      let x_intersect = parallel_line_intersect(
+          one.x,
+          one.x + one.x_size,
+          two.x,
+          two.x + two.x_size
+        ),
+        y_intersect = parallel_line_intersect(
+          one.y,
+          one.y + one.y_size,
+          two.y,
+          two.y + two.y_size
+        ),
+        left = false,
+        right = false,
+        _top = false, // 'top' seems to be a reserved word
+        bottom = false,
+        x_center = false,
+        y_center = false,
+        center = false;
+
+
+      if (x_intersect === "low") {
+        left = true;
+      } else if (x_intersect === "high") {
+        right = true;
+      } else if (x_intersect === "middle") {
+        x_center = true;
+      } else if (x_intersect === "whole" || x_intersect === "equal") {
+        //left = true;
+        //right = true;
+        x_center = true;
+      }
+
+      if (y_intersect === "low") {
+        _top = true;
+      } else if (y_intersect === "high") {
+        bottom = "true";
+      } else if (y_intersect === "middle") {
+        y_center = true;
+      } else if (y_intersect === "whole" || y_intersect === "equal") {
+        //_top = true;
+        //bottom = true;
+        y_center = true;
+      }
+
+      if (x_center && y_center) {
+        center = true;
+      }
+
+      return {
+        'top': _top, // top seems to be a reserved word
+        bottom: bottom,
+        x_center: x_center,
+        y_center: y_center,
+        center: center,
+        left: left,
+        right: right,
+      };
     },
     init = function (_manager) {
       manager = _manager;
@@ -1074,6 +1257,7 @@ let PhysicsManager = (function () {
       init: init,
       physics: physics,
       collide: collide,
+      directional_collide: directional_collide,
     };
   };
 })();
