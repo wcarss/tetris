@@ -330,18 +330,10 @@ let config_spec = {
     "paused": false,
     "update": function (delta, manager) {
       let map_manager = manager.get('map'),
+        physics = manager.get('physics'),
         controls = manager.get('control'),
-        entity_manager = manager.get('entity');
-
-      let piece_collision_index = null,
-        colliding_piece = null,
-        collisions = null,
-        collision_index = null,
-        entity = null,
-        x_collision = null,
-        y_collision = null,
-        rotate = null,
-        directions = null;
+        entity_manager = manager.get('entity'),
+        rotated = null;
 
       if (map_manager.get_current_map_id() === "intro" || this.paused) {
       } else if (map_manager.get_current_map_id() === "play_area") {
@@ -350,8 +342,7 @@ let config_spec = {
 
         if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space')) {
           if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
-            rotate = true;
-
+            rotated = true;
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
           this.y_velocity = 5 * delta;
@@ -387,81 +378,80 @@ let config_spec = {
           this.shape.x = this.x;
           this.shape.y = this.y;
 
-          let piece_update_index = null,
-            moving_piece = null;
+          let index = null,
+            collision_index = null,
+            piece = null,
+            collisions = null,
+            collision = null,
+            entity = null,
+            x_collision = null,
+            y_collision = null;
 
-          for (piece_update_index in this.shape.pieces) {
-            moving_piece = this.shape.pieces[piece_update_index];
-            moving_piece.last_x = moving_piece.x;
-            moving_piece.last_y = moving_piece.y;
+          for (index in this.shape.pieces) {
+            piece = this.shape.pieces[index];
+            piece.last_x = piece.x;
+            piece.last_y = piece.y;
           }
 
-          if (rotate) {
+          if (rotated) {
             rotate_shape(this.shape, 90);
             this.last_rotated = performance.now();
           }
 
-          for (piece_update_index in this.shape.pieces) {
-            moving_piece = this.shape.pieces[piece_update_index];
-            moving_piece.x = Math.floor(this.shape.x) + moving_piece.rel_x * moving_piece.x_size;
-            moving_piece.y = Math.floor(this.shape.y) + moving_piece.rel_y * moving_piece.y_size;
+          for (index in this.shape.pieces) {
+            piece = this.shape.pieces[index];
+            piece.x = Math.floor(this.shape.x) + piece.rel_x * piece.x_size;
+            piece.y = Math.floor(this.shape.y) + piece.rel_y * piece.y_size;
           }
 
-          let //piece_collision_index = null,
-            //colliding_piece = null,
-            //collisions = null,
-            //collision_index = null,
-            //entity = null,
-            //x_collision = null,
-            //y_collision = null,
-            reset_index = null,
-            reset_piece = null;
-            //directions = null;
+          for (index in this.shape.pieces) {
+            piece = this.shape.pieces[index];
+            collisions = entity_manager.collide(piece);
 
-          for (piece_collision_index in this.shape.pieces) {
-            colliding_piece = this.shape.pieces[piece_collision_index];
-            collisions = entity_manager.collide(colliding_piece);
             for (collision_index in collisions) {
               entity = collisions[collision_index];
+
               if (entity.type === "bound" || (entity.type === "piece" && entity.state === "static")) {
-                directions = manager.get('physics').directional_collide(colliding_piece, entity);
-                if (directions.top || directions.left || directions.right || directions.bottom || directions.center) {
-                  if (colliding_piece.last_x === colliding_piece.x && directions.top) {
+                collision = physics.directional_collide(piece, entity, {return_non_collisions: false});
+
+                if (collision && (collision.top || collision.left || collision.right || collision.bottom || collision.center)) {
+                  if (collision.top && piece.last_x === piece.x) {
                     y_collision = true;
                   } else {
                     x_collision = true;
                   }
-                }
 
-                if (x_collision || y_collision) {
                   break;
                 }
               }
             }
+            if (y_collision || x_collision) {
+              break;
+            }
           }
 
-          if (x_collision || y_collision) {
-            if (rotate) {
+          if (collision) {
+            if (rotated) {
               rotate_shape(this.shape, -90);
             }
 
             if (x_collision) {
               this.x = this.last_x;
               this.shape.x = this.shape.last_x;
-            }
-
-            if (y_collision) {
+            } else if (y_collision) {
               this.y = this.last_y;
               this.shape.y = this.shape.last_y;
               this.shape.state = "static";
+            } else {
+              console.log("unknown block collision type happening!");
             }
 
-            for (reset_index in this.shape.pieces) {
-              reset_piece = this.shape.pieces[reset_index];
-              reset_piece.x = Math.floor(this.shape.x) + reset_piece.rel_x * reset_piece.x_size;
-              reset_piece.y = Math.floor(this.shape.y) + reset_piece.rel_y * reset_piece.y_size;
+            for (index in this.shape.pieces) {
+              piece = this.shape.pieces[index];
+              piece.x = Math.floor(this.shape.x) + piece.rel_x * piece.x_size;
+              piece.y = Math.floor(this.shape.y) + piece.rel_y * piece.y_size;
               if (y_collision) {
-                reset_piece.state = "static";
+                piece.state = "static";
               }
             }
           }

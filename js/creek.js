@@ -1058,7 +1058,9 @@ let PhysicsManager = (function () {
     collide = function (entity_one, entity_two, debug) {
       let rect_one = to_rect(entity_one),
         rect_two = to_rect(entity_two),
-        rect_distance = distance(rect_one, rect_two, debug);
+        rect_distance = distance(rect_one, rect_two, debug),
+        collision = null;
+
       if (debug) {
         console.log("distance to collide: " + rect_one.collide_distance+rect_two.collide_distance);
         console.log("distance is " + rect_distance);
@@ -1185,7 +1187,9 @@ let PhysicsManager = (function () {
 
       return "error";
     },
-    directional_collide = function (one, two) {
+    directional_collide = function (one, two, options) {
+      options = options || {};
+
       let x_intersect = parallel_line_intersect(
           one.x,
           one.x + one.x_size,
@@ -1198,51 +1202,32 @@ let PhysicsManager = (function () {
           two.y,
           two.y + two.y_size
         ),
-        left = false,
-        right = false,
-        _top = false, // 'top' seems to be a reserved word
-        bottom = false,
-        x_center = false,
-        y_center = false,
-        center = false;
+        _top = y_intersect === "low",
+        bottom = y_intersect === "high",
+        left = x_intersect === "low",
+        right = x_intersect === "high",
+        x_center = x_intersect === "middle" || x_intersect === "whole" || x_intersect === "equal",
+        y_center = y_intersect === "middle" || y_intersect === "whole" || y_intersect === "equal",
+        x_collision = left || right || x_center,
+        y_collision = _top || bottom || y_center,
+        happening = x_collision && y_collision;
 
-
-      if (x_intersect === "low") {
-        left = true;
-      } else if (x_intersect === "high") {
-        right = true;
-      } else if (x_intersect === "middle") {
-        x_center = true;
-      } else if (x_intersect === "whole" || x_intersect === "equal") {
-        //left = true;
-        //right = true;
-        x_center = true;
-      }
-
-      if (y_intersect === "low") {
-        _top = true;
-      } else if (y_intersect === "high") {
-        bottom = "true";
-      } else if (y_intersect === "middle") {
-        y_center = true;
-      } else if (y_intersect === "whole" || y_intersect === "equal") {
-        //_top = true;
-        //bottom = true;
-        y_center = true;
-      }
-
-      if (x_center && y_center) {
-        center = true;
+      // by default, this returns null if no actual collision
+      if (!(happening || options.return_non_collisions)) {
+        return null;
       }
 
       return {
-        'top': _top, // top seems to be a reserved word
+        'top': _top,
         bottom: bottom,
-        x_center: x_center,
-        y_center: y_center,
-        center: center,
         left: left,
         right: right,
+        x_center: x_center,
+        y_center: y_center,
+        center: x_center || y_center,
+        x_collision: x_collision,
+        y_collision: y_collision,
+        happening: x_collision && y_collision,
       };
     },
     init = function (_manager) {
