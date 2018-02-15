@@ -333,7 +333,8 @@ let config_spec = {
         physics = manager.get('physics'),
         controls = manager.get('control'),
         entity_manager = manager.get('entity'),
-        rotated = null;
+        rotated = null,
+        collision = null;
 
       if (map_manager.get_current_map_id() === "intro" || this.paused) {
       } else if (map_manager.get_current_map_id() === "play_area") {
@@ -343,6 +344,7 @@ let config_spec = {
         if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space')) {
           if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
             rotated = true;
+            this.last_rotated = performance.now();
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
           this.y_velocity = 5 * delta;
@@ -371,89 +373,30 @@ let config_spec = {
         }
         this.y += this.y_velocity;
 
-
         if (this.shape && this.shape.state === "falling") {
-          this.shape.last_x = this.shape.x;
-          this.shape.last_y = this.shape.y;
-          this.shape.x = this.x;
-          this.shape.y = this.y;
-
-          let index = null,
-            collision_index = null,
-            piece = null,
-            collisions = null,
-            collision = null,
-            entity = null,
-            x_collision = null,
-            y_collision = null;
-
-          for (index in this.shape.pieces) {
-            piece = this.shape.pieces[index];
-            piece.last_x = piece.x;
-            piece.last_y = piece.y;
-          }
-
+          this.shape.save_location();
           if (rotated) {
-            rotate_shape(this.shape, 90);
-            this.last_rotated = performance.now();
+            this.shape.rotate(90);
           }
 
-          for (index in this.shape.pieces) {
-            piece = this.shape.pieces[index];
-            piece.x = Math.floor(this.shape.x) + piece.rel_x * piece.x_size;
-            piece.y = Math.floor(this.shape.y) + piece.rel_y * piece.y_size;
-          }
+          this.shape.move(this.x, this.y);
 
-          for (index in this.shape.pieces) {
-            piece = this.shape.pieces[index];
-            collisions = entity_manager.collide(piece);
-
-            for (collision_index in collisions) {
-              entity = collisions[collision_index];
-
-              if (entity.type === "bound" || (entity.type === "piece" && entity.state === "static")) {
-                collision = physics.directional_collide(piece, entity, {return_non_collisions: false});
-
-                if (collision && (collision.top || collision.left || collision.right || collision.bottom || collision.center)) {
-                  if (collision.top && piece.last_x === piece.x) {
-                    y_collision = true;
-                  } else {
-                    x_collision = true;
-                  }
-
-                  break;
-                }
-              }
-            }
-            if (y_collision || x_collision) {
-              break;
-            }
-          }
-
+          collision = this.shape.collide(manager);
           if (collision) {
             if (rotated) {
               rotate_shape(this.shape, -90);
             }
 
-            if (x_collision) {
+            if (collision.x) {
               this.x = this.last_x;
-              this.shape.x = this.shape.last_x;
-            } else if (y_collision) {
+            } else if (collision.y) {
               this.y = this.last_y;
-              this.shape.y = this.shape.last_y;
-              this.shape.state = "static";
+              this.shape.halt();
             } else {
               console.log("unknown block collision type happening!");
             }
 
-            for (index in this.shape.pieces) {
-              piece = this.shape.pieces[index];
-              piece.x = Math.floor(this.shape.x) + piece.rel_x * piece.x_size;
-              piece.y = Math.floor(this.shape.y) + piece.rel_y * piece.y_size;
-              if (y_collision) {
-                piece.state = "static";
-              }
-            }
+            this.shape.move(this.x, this.y);
           }
         }
 
