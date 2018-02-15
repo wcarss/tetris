@@ -340,6 +340,7 @@ let config_spec = {
         entity = null,
         x_collision = null,
         y_collision = null,
+        rotate = null,
         directions = null;
 
       if (map_manager.get_current_map_id() === "intro" || this.paused) {
@@ -349,35 +350,8 @@ let config_spec = {
 
         if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space')) {
           if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
-            rotate_shape(this.shape, 90);
+            rotate = true;
 
-            for (piece_collision_index in this.shape.pieces) {
-              colliding_piece = this.shape.pieces[piece_collision_index];
-              collisions = entity_manager.collide(colliding_piece);
-              for (collision_index in collisions) {
-                entity = collisions[collision_index];
-                if (entity.type === "bound" || (entity.type === "piece" && entity.state === "static")) {
-                  directions = manager.get('physics').directional_collide(colliding_piece, entity);
-                  if (directions.top || directions.left || directions.right || directions.bottom || directions.center) {
-                    if (colliding_piece.last_x === colliding_piece.x && directions.top) {
-                      y_collision = true;
-                    } else {
-                      x_collision = true;
-                    }
-                  }
-
-                  if (x_collision || y_collision) {
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (x_collision || y_collision) {
-              rotate_shape(this.shape, -90);
-            }
-
-            this.last_rotated = performance.now();
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
           this.y_velocity = 5 * delta;
@@ -406,6 +380,7 @@ let config_spec = {
         }
         this.y += this.y_velocity;
 
+
         if (this.shape && this.shape.state === "falling") {
           this.shape.last_x = this.shape.x;
           this.shape.last_y = this.shape.y;
@@ -419,6 +394,15 @@ let config_spec = {
             moving_piece = this.shape.pieces[piece_update_index];
             moving_piece.last_x = moving_piece.x;
             moving_piece.last_y = moving_piece.y;
+          }
+
+          if (rotate) {
+            rotate_shape(this.shape, 90);
+            this.last_rotated = performance.now();
+          }
+
+          for (piece_update_index in this.shape.pieces) {
+            moving_piece = this.shape.pieces[piece_update_index];
             moving_piece.x = Math.floor(this.shape.x) + moving_piece.rel_x * moving_piece.x_size;
             moving_piece.y = Math.floor(this.shape.y) + moving_piece.rel_y * moving_piece.y_size;
           }
@@ -457,15 +441,21 @@ let config_spec = {
           }
 
           if (x_collision || y_collision) {
+            if (rotate) {
+              rotate_shape(this.shape, -90);
+            }
+
             if (x_collision) {
               this.x = this.last_x;
               this.shape.x = this.shape.last_x;
             }
+
             if (y_collision) {
               this.y = this.last_y;
               this.shape.y = this.shape.last_y;
               this.shape.state = "static";
             }
+
             for (reset_index in this.shape.pieces) {
               reset_piece = this.shape.pieces[reset_index];
               reset_piece.x = Math.floor(this.shape.x) + reset_piece.rel_x * reset_piece.x_size;
