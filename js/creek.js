@@ -1039,7 +1039,9 @@ let PhysicsManager = (function () {
       return {
         'left': entity.x,
         'width': entity.x_size,
+        'right': entity.x+entity.x_size,
         'top': entity.y,
+        'bottom': entity.y+entity.y_size,
         'height': entity.y_size,
         'mid_x': entity.x + entity.x_size / 2,
         'mid_y': entity.y + entity.y_size / 2,
@@ -1054,6 +1056,33 @@ let PhysicsManager = (function () {
         );
 
         return hypotenuse;
+    },
+    aabb_collide = function (entity_one, entity_two, debug) {
+      let a = to_rect(entity_one);
+      let b = to_rect(entity_two);
+      let d1x = a.left - b.right;
+      let d1y = a.top - b.bottom;
+      let d2x = b.left - a.right;
+      let d2y = b.top - a.bottom;
+      let ret = null;
+
+      if (debug) {
+        console.log("entity one, a: " + a);
+        console.log("entity two, b: " + b);
+        console.log("d1x, d1y, d2x, d2y: " + d1x + ", " + d2x + ", " + d1y + ", " + d2y);
+      }
+
+      if (d1x > 0 || d1y > 0 || d2x > 0 || d2y > 0) {
+        ret = false;
+      }
+
+      ret = true;
+
+      if (debug) {
+        console.log("aabb_collide returning " + ret);
+      }
+
+      return ret;
     },
     collide = function (entity_one, entity_two, debug) {
       let rect_one = to_rect(entity_one),
@@ -1153,11 +1182,11 @@ let PhysicsManager = (function () {
        *
        */
 
-      if (one_high < two_low) {
+      if (one_high <= two_low) {
         return "below";
       }
 
-      if (one_low > two_high) {
+      if (one_low >= two_high) {
         return "above";
       }
 
@@ -1165,7 +1194,8 @@ let PhysicsManager = (function () {
         return "equal";
       }
 
-      if (one_low <= two_low && one_high < two_high && one_high >= two_low) {
+
+      if (one_low <= two_low && one_high < two_high && one_high > two_low) {
         // not assuming one_high >= two_low in case conditions order is shuffled
         return "low";
       }
@@ -1174,7 +1204,7 @@ let PhysicsManager = (function () {
         return "middle";
       }
 
-      if (one_low > two_low && one_high >= two_high && one_low <= two_high) {
+      if (one_low > two_low && one_high >= two_high && one_low < two_high) {
         // not assuming one_low <= two_high in case conditions order is shuffled
         return "high";
       }
@@ -1241,7 +1271,7 @@ let PhysicsManager = (function () {
     return {
       init: init,
       physics: physics,
-      collide: collide,
+      collide: aabb_collide,
       directional_collide: directional_collide,
     };
   };
