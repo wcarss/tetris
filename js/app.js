@@ -115,8 +115,10 @@ function hydrate_shape(shape_name) {
               collision = physics.directional_collide(piece, entity);
               if (collision) {
                 if (collision.top && piece.last_x === piece.x) {
+                  console_log("in collider, y collision detected");
                   y_collision = true;
                 } else {
+                  console_log("in collider, x collision detected");
                   x_collision = true;
                 }
 
@@ -130,7 +132,7 @@ function hydrate_shape(shape_name) {
         }
 
         if (y_collision || x_collision) {
-          console.log("returning collisions x, y: " + x_collision + ", " + y_collision);
+          console_log("returning collisions x, y: " + x_collision + ", " + y_collision);
           return {
             y: y_collision,
             x: x_collision,
@@ -141,11 +143,46 @@ function hydrate_shape(shape_name) {
       },
       halt: function () {
         let index = null;
+        let piece = null;
+        let that = this;
+        let offset_x = 40;
+        let offset_y = 40;
+        let x_index = 0;
+        let y_index = 0;
+        let slide_time = 300;
 
-        this.state = "static";
+        this.state = "sliding";
         for (index in this.pieces) {
-          this.pieces[index].state = "static";
+          piece = this.pieces[index];
+          piece.state = "sliding";
+
+          x_index = Math.round((piece.x - offset_x) / piece.x_size);
+          y_index = Math.round((piece.y - offset_y) / piece.y_size);
+          x_index = clamp(x_index, 0, 9);
+          y_index = clamp(y_index, 0, 17);
+          piece.x = x_index * piece.x_size + offset_x;
+          piece.y = y_index * piece.y_size + offset_y;
         }
+        console_log("setting pieces and shape to sliding.");
+        this.static_timeout = setTimeout(function () {
+          let inner_index = null;
+
+          that.state = "static";
+          for (inner_index in that.pieces) {
+            that.pieces[inner_index].state = "static";
+          }
+          console_log("setting pieces and shape to static.");
+        }, slide_time);
+      },
+      reset_to_falling: function () {
+        let index = null;
+
+        clearTimeout(this.static_timeout);
+        this.state = "falling";
+        for (index in this.pieces) {
+          this.pieces[index].state = "falling";
+        }
+        console_log("resetting to falling");
       }
     };
 

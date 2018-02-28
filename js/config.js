@@ -162,7 +162,6 @@ let config_spec = {
           if (score > high_score) {
             high_score = score;
           }
-          console_log("calling halt on shape at x,y: " + player.shape.x + "," + player.shape.y);
           for (shape_piece_index in player.shape.pieces) {
             piece = player.shape.pieces[shape_piece_index];
             x_index = Math.round((piece.x - offset_x) / piece.x_size);
@@ -236,8 +235,6 @@ let config_spec = {
                   ii = ii + 1;
                 }
               }
-
-
             }
           }
           
@@ -295,7 +292,7 @@ let config_spec = {
             pieces[0].y, pieces[1].y, pieces[2].y, pieces[3].y
           );
           if (player.shape.last_y === player.shape.y) {
-            console.log("static-tize them, cap'n!!!");
+            console.log("static-tize them, cap'n!!! (this doesn't .. static-tize anything now");
           }
         }
       }
@@ -322,7 +319,7 @@ let config_spec = {
     "y_velocity": 0,
     "max_x_velocity": 32,
     "min_x_velocity": -32,
-    "max_y_velocity": 5,
+    "max_y_velocity": 4,
     "min_y_velocity": 0.5,
     "next_shape": null,
     "shape": null,
@@ -347,9 +344,9 @@ let config_spec = {
             this.last_rotated = performance.now();
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
-          this.y_velocity = 5 * delta;
+          this.y_velocity = 2;
         } else {
-          this.y_velocity *= 0.5;
+          this.y_velocity = 0.5;
         }
 
         if (controls.keys('KeyA') || controls.keys('ArrowLeft')) {
@@ -371,9 +368,10 @@ let config_spec = {
           this.x += this.x_velocity;
           this.last_moved = performance.now();
         }
+
         this.y += this.y_velocity;
 
-        if (this.shape && this.shape.state === "falling") {
+        if (this.shape && (this.shape.state === "falling" || this.shape.state === "sliding")) {
           this.shape.save_location();
           if (rotated) {
             this.shape.rotate(90);
@@ -388,15 +386,21 @@ let config_spec = {
             }
 
             if (collision.x) {
+              console_log("collided x");
               this.x = this.last_x;
             } else if (collision.y) {
+              console_log("collided y");
               this.y = this.last_y;
-              this.shape.halt();
+              if (this.shape.state === "falling") {
+                this.shape.halt();
+              }
             } else {
               console.log("unknown block collision type happening!");
             }
 
             this.shape.move(this.x, this.y);
+          } else if (this.shape.state === "sliding") {
+            this.shape.reset_to_falling();
           }
         }
 
