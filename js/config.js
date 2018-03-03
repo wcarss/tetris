@@ -52,7 +52,7 @@ let config_spec = {
               }
             });
             audio_manager.pause_all();
-            audio_manager.play("selection");
+            audio_manager.play("game_start");
           }
           paused = !paused;
           player.paused = paused;
@@ -99,7 +99,7 @@ let config_spec = {
           null, null, null, null, null, null,
           null, null, null, null, null, null,
           null, null, null, null, null, null
-        ];
+        ]; 
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area");
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
@@ -127,13 +127,13 @@ let config_spec = {
             first_color = null;
           } else {
             player_manager.modify_player('shape', get_random_shape());
-            first_color = get_random_piece_color(player.level-1);
+            first_color = get_random_piece_color(player.level);
           }
           player_manager.modify_player('next_shape', get_random_shape());
           player.next_shape.state = "next";
           player.next_shape.last_x = player.next_shape.x = 440;
           player.next_shape.last_y = player.next_shape.y = 88;
-          color = get_random_piece_color(player.level-1);
+          color = get_random_piece_color(player.level);
           for (next_index in player.next_shape.pieces) {
             piece = player.next_shape.pieces[next_index];
             piece.img = color;
@@ -160,11 +160,6 @@ let config_spec = {
             entity_manager.move_entity(piece, piece.x, piece.y);
           }
         } else if (player.shape.state === "static") {
-          audio_manager.play("piece_drop");
-          score += random_int(3,9);
-          if (score > high_score) {
-            high_score = score;
-          }
           for (shape_piece_index in player.shape.pieces) {
             piece = player.shape.pieces[shape_piece_index];
             x_index = Math.round((piece.x - offset_x) / piece.x_size);
@@ -192,7 +187,6 @@ let config_spec = {
 
 //              we made it to the last piece of this loop!
                 if (j === 9) {
-                  console.log("j is 9");
                   rows_cleared += 1;
 //                function clear_row_and_copy_others_down(i) {}
                   for (let l = 0; l < 10; l++) {
@@ -233,25 +227,26 @@ let config_spec = {
               }
             }
           }
-          if (rows_cleared > high_rows) {
-            high_rows = rows_cleared;
-          }
-          if (score > high_score) {
-            high_score = score;
-          }
 
           if (rows_cleared - last_rows_cleared >= 4) {
             score += 1000;
             audio_manager.play("4_rows");
-            console.log("playin' 4 rows")
           } else if (rows_cleared - last_rows_cleared >= 2) {
             score += 200;
-            audio_manager.play("2_rows");
-            console.log("playin' 2 rows")
+            audio_manager.play("line_clear");
           } else if (rows_cleared - last_rows_cleared >= 1 ) {
             score += 50;
-            console.log("only did 1 row");
             audio_manager.play("line_clear");
+          } else {
+            audio_manager.play("piece_drop");
+            score += random_int(3,9);
+          }
+
+          if (score > high_score) {
+            high_score = score;
+          }
+          if (rows_cleared > high_rows) {
+            high_rows = rows_cleared;
           }
 
           let progression_length = {
@@ -285,7 +280,7 @@ let config_spec = {
           if (player.shape.y < 50) {
             console.log("exited because of high static shape");
             player.shape.state = "done";
-            audio_manager.pause_all();
+            audio_manager.stop_all();
             audio_manager.play("game_over");
             entity_manager.add_text({
               id: "game_over",
@@ -301,6 +296,10 @@ let config_spec = {
             setTimeout(function reset_game () {
               let player = player_manager.get_player();
               player.shape = null;
+              player.next_shape = null;
+              player.level = 1;
+              player.drop_speed_mod = 0;
+              player.progress = 0;
               map_manager.change_maps("intro");
               entity_manager.remove_text("game_over");
               entity_manager.clear_entities();
@@ -319,25 +318,6 @@ let config_spec = {
             }, 2000);
           } else {
             player.shape = null;
-          }
-        } else { // player.shape is non-null and non-static
-          pieces = player.shape.pieces;
-
-          player.shape.lowest_x = Math.min(
-            pieces[0].x, pieces[1].x, pieces[2].x, pieces[3].x
-          );
-          player.shape.highest_x = 32 + Math.max(
-            pieces[0].x, pieces[1].x, pieces[2].x, pieces[3].x
-          );
-
-          player.shape.lowest_y = Math.min(
-            pieces[0].y, pieces[1].y, pieces[2].y, pieces[3].y
-          );
-          player.shape.highest_y = 32 + Math.max(
-            pieces[0].y, pieces[1].y, pieces[2].y, pieces[3].y
-          );
-          if (player.shape.last_y === player.shape.y) {
-            console.log("static-tize them, cap'n!!! (this doesn't .. static-tize anything now");
           }
         }
       }
@@ -391,6 +371,7 @@ let config_spec = {
       let map_manager = manager.get('map'),
         physics = manager.get('physics'),
         controls = manager.get('control'),
+        audio_manager = manager.get('audio'),
         entity_manager = manager.get('entity'),
         rotated = null,
         collision = null;
@@ -406,7 +387,7 @@ let config_spec = {
             this.last_rotated = performance.now();
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
-          this.y_velocity = 4 * (this.base_drop_speed + this.drop_speed_mod);
+          this.y_velocity = 10;
         } else {
           this.y_velocity = this.base_drop_speed + this.drop_speed_mod;
         }
@@ -421,6 +402,9 @@ let config_spec = {
 
         if (!this.last_moved || (performance.now() - this.last_moved) > 80) {
           this.x += this.x_velocity;
+          if (this.x !== this.last_x) {
+            audio_manager.play("block_slide");
+          }
           this.last_moved = performance.now();
         }
 
@@ -430,6 +414,7 @@ let config_spec = {
           this.shape.save_location();
           if (rotated) {
             this.shape.rotate(90);
+            audio_manager.play("block_rotate");
           }
 
           this.shape.move(this.x, this.y);
@@ -832,6 +817,30 @@ let config_spec = {
       "id": "selection",
       "muted": false,
       "volume": 0.3,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/game_start.mp3",
+      "id": "game_start",
+      "muted": false,
+      "volume": 0.3,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/block_slide.mp3",
+      "id": "block_slide",
+      "muted": false,
+      "volume": 0.15,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/block_rotate.mp3",
+      "id": "block_rotate",
+      "muted": false,
+      "volume": 0.15,
       "looping": false,
     },
     {

@@ -31,6 +31,11 @@ function generate_level_resources(manager) {
   ];
 
   let colour_sets = [
+    [ // 0 - oceanic ice
+      'rgb( 129, 121, 255)', // ice blue
+      'rgb( 34, 14, 220)', // dark ocean blue
+    //  rgb( , , ) // unused
+    ],
     [ // 1 - forest
       'rgb( 117, 227, 0)', // leafy green
       'rgb( 0, 171, 0)', // dark leafy gren
@@ -59,6 +64,21 @@ function generate_level_resources(manager) {
     [ // 6 - metroid
       'rgb( 188, 25, 0)', // awesome red
       'rgb( 82, 82, 82)', // deep gray
+    //  rgb( , , ) // unused
+    ],
+    [ // 7 - night flowers
+      'rgb( 134, 25, 240)', // purple
+      'rgb( 183, 15, 17)', // other purple
+    //  rgb( , , ) // unused
+    ],
+    [ // 8 - red and blue.. ?
+      'rgb( 234, 53, 0)', // orangey red
+      'rgb( 29, 64, 255)', // lightish blue
+    //  rgb( , , ) // unused
+    ],
+    [ // 9 - orange and gold
+      'rgb( 255, 157, 56)', // gold, jerry
+      'rgb( 234, 53, 0)', // orangey red
     //  rgb( , , ) // unused
     ],
   ];
@@ -101,10 +121,9 @@ function get_random_piece_color(level) {
 }
 
 function tile_id(level, colour, mask) {
-  level = level % 6; // hax
+  level = level % 10; // hax
   let tile_string = "level_" + level + "_" + colour + "_" + mask;
-  console.log("using tile string: " + tile_string);
-  return tile_string
+  return tile_string;
 }
 
 /*  arrays of relative x,y coords of tetris pieces
