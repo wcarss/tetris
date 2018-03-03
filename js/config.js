@@ -178,6 +178,7 @@ let config_spec = {
             }
             rows[y_index][x_index] = piece.id;
           }
+          let last_rows_cleared = rows_cleared;
           for (let ii = 17; ii >= 0; ii--) {
             if (rows[ii] !== null) {
 
@@ -194,7 +195,7 @@ let config_spec = {
                   if (rows_cleared > high_rows) {
                     high_rows = rows_cleared;
                   }
-                  score += 200;
+                  score += 100;
                   if (score > high_score) {
                     high_score = score;
                   }
@@ -237,7 +238,40 @@ let config_spec = {
               }
             }
           }
-          
+          if (rows_cleared - last_rows_cleared >= 4) {
+            score += 1000;
+            //audio_manager.play("4_rows");
+          } else if (rows_cleared - last_rows_cleared >= 2) {
+            score += 200;
+            //audio_manager.play("2_rows");
+          }
+
+          let progression_length = {
+            "methuselah": 100,
+            "marathon": 50,
+            "epic": 30,
+            "long": 20,
+            "standard": 10,
+            "fast": 2,
+          }[player.game_length];
+
+          if (rows_cleared !== last_rows_cleared && Math.floor(rows_cleared / progression_length) > player.progress) {
+            console.log("going to change levels");
+            player.progress = Math.floor(rows_cleared / progression_length);
+            if (player.game_type === "progression") {
+              player.level += 1;
+              player.drop_speed_mod = player.get_speed(player.level);
+              if (player.level > 10) {
+                console.log("... you win.");
+              }
+            } else if (player.game_type === "random") {
+              player.level = array_random([
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+              ]);
+              player.drop_speed_mod = player.get_speed(player.level);
+            }
+         }
+
           // check_lines();
           if (player.shape.y < 50) {
             console.log("exited because of high static shape");
@@ -324,6 +358,17 @@ let config_spec = {
     "next_shape": null,
     "shape": null,
     "score": 0,
+    "base_drop_speed": 0.5,
+    "drop_speed_mod": 0,
+    "get_speed": function (level) {
+      return [
+        0.5, 0.5, 1, 1.3, 1.6, 1.8, 2, 2.2, 2.4, 2.6, 2.8
+      ][level];
+    },
+    "level": 1,
+    "progress": 0,
+    "game_length": "standard",
+    "game_type": "progression",
     "paused": false,
     "update": function (delta, manager) {
       let map_manager = manager.get('map'),
@@ -344,9 +389,9 @@ let config_spec = {
             this.last_rotated = performance.now();
           }
         } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
-          this.y_velocity = 2;
+          this.y_velocity = 4 * (this.base_drop_speed + this.drop_speed_mod);
         } else {
-          this.y_velocity = 0.5;
+          this.y_velocity = this.base_drop_speed + this.drop_speed_mod;
         }
 
         if (controls.keys('KeyA') || controls.keys('ArrowLeft')) {
@@ -356,13 +401,6 @@ let config_spec = {
         } else {
           this.x_velocity = 0;
         }
-
-        this.x_velocity = clamp(
-          this.x_velocity, this.min_x_velocity, this.max_x_velocity
-        );
-        this.y_velocity = clamp(
-          this.y_velocity, this.min_y_velocity, this.max_y_velocity
-        );
 
         if (!this.last_moved || (performance.now() - this.last_moved) > 80) {
           this.x += this.x_velocity;
@@ -516,10 +554,28 @@ let config_spec = {
       "init": function (manager) {
         let entity_manager = manager.get('entity');
         entity_manager.add_text({
+          id: "level",
+          text: "level: --",
+          x: 384,
+          y: 256,
+          offset_type: "fixed",
+          font: "16px sans bold",
+          color: "white",
+          update: function (delta, manager) {
+            let player = manager.get('player').get_player();
+            let level_text = "" + player.level;
+
+            if (level_text.length === 1) {
+              level_text = "0" + level_text;
+            }
+            this.text = "level: " + level_text;
+          }
+        });
+        entity_manager.add_text({
           id: "score",
           text: "score:",
           x: 384,
-          y: 256,
+          y: 276,
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
@@ -536,7 +592,7 @@ let config_spec = {
           id: "high_score",
           text: "high score: ",
           x: 384,
-          y: 276,
+          y: 296,
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
@@ -553,7 +609,7 @@ let config_spec = {
           id: "rows_cleared",
           text: "rows: ",
           x: 384,
-          y: 296,
+          y: 316,
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
@@ -570,7 +626,7 @@ let config_spec = {
           id: "high_rows",
           text: "high_rows: ",
           x: 384,
-          y: 316,
+          y: 336,
           offset_type: "fixed",
           font: "16px sans bold",
           color: "white",
@@ -586,6 +642,7 @@ let config_spec = {
       },
       "deinit": function (manager) {
         let entity_manager = manager.get('entity');
+        entity_manager.remove_text("level");
         entity_manager.remove_text("score");
         entity_manager.remove_text("high_score");
         entity_manager.remove_text("rows_cleared");
@@ -634,9 +691,9 @@ let config_spec = {
             "x": 376,
             "y": 232,
             "x_scale": 5,
-            "y_scale": 3,
+            "y_scale": 116/32,
             "x_size": 160,
-            "y_size": 96,
+            "y_size": 116,
             "layer": -0.5,
           },
           {
