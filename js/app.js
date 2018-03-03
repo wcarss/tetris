@@ -13,11 +13,98 @@ function rotate_shape(shape, direction) {
   }
 }
 
-function get_random_piece_color() {
-  let level_string = "level_6_tile_";
-  let tile = array_random([1,3,5,6]);
+function generate_level_resources(manager) {
+  let mask_index = null;
+  let mask = null;
+  let colour_set_index = null;
+  let colour_set = null;
+  let colour_index = null;
+  let colour = null;
+  let temp_canvas = null;
+  let temp_context = null;
+  let resource_manager = manager.get('resource');
 
-  return level_string + tile;
+  let masks = [
+    resource_manager.get_image("mask_1"),
+    resource_manager.get_image("mask_2"),
+    resource_manager.get_image("mask_3"),
+  ];
+
+  let colour_sets = [
+    [ // 1 - forest
+      'rgb( 117, 227, 0)', // leafy green
+      'rgb( 0, 171, 0)', // dark leafy gren
+    //  rgb( , , )
+    ],
+    [ // 2 - cotton candy
+      'rgb( 159, 0, 215)', // dark purple
+      'rgb( 242, 72, 255)', // light purple
+    //  rgb( , , ) // unused
+    ],
+    [ // 3 - ocean
+      'rgb( 43, 244, 3)', // lime green
+      'rgb( 34, 14, 220)', // dark ocean blue
+    //  rgb( , , ) // unused
+    ],
+    [ // 4 - bubble gum
+      'rgb( 215, 10, 104)', // cotton candy pink
+      'rgb( 46, 184, 120)', // minty green
+    //  rgb( , , ) // unused
+    ],
+    [ // 5 - ice cave
+      'rgb( 46, 184, 120)', // minty green
+      'rgb( 129, 121, 255)', // ice blue
+    //  rgb( , , ) // unused
+    ],
+    [ // 6 - metroid
+      'rgb( 188, 25, 0)', // awesome red
+      'rgb( 82, 82, 82)', // deep gray
+    //  rgb( , , ) // unused
+    ],
+  ];
+
+  for (mask_index in masks) {
+    mask = masks[mask_index];
+    for (colour_set_index in colour_sets) {
+      colour_set = colour_sets[colour_set_index];
+      for (colour_index in colour_set) {
+        colour = colour_set[colour_index];
+        temp_canvas = document.createElement("canvas");
+        temp_canvas.width = mask.source_width;
+        temp_canvas.height = mask.source_height;
+        temp_context = temp_canvas.getContext("2d");
+        temp_context.fillStyle = colour;
+        temp_context.fillRect(0, 0, mask.source_width, mask.source_height);
+        temp_context.globalCompositeOperation = "source-atop";
+        temp_context.drawImage(mask.img, 0, 0);
+
+        resource_manager.add_image({
+          "type": "image",
+          "url": "no_url",
+          "id": tile_id(colour_set_index, colour_index, mask_index),
+          "source_x": 0,
+          "source_y": 0,
+          "source_width": 32,
+          "source_height": 32,
+          "img": temp_canvas,
+        });
+      }
+    }
+  }
+}
+
+function get_random_piece_color(level) {
+  let colour = random_int(2);
+  let mask = random_int(3);
+
+  return tile_id(level, colour, mask);
+}
+
+function tile_id(level, colour, mask) {
+  level = level % 6; // hax
+  let tile_string = "level_" + level + "_" + colour + "_" + mask;
+  console.log("using tile string: " + tile_string);
+  return tile_string
 }
 
 /*  arrays of relative x,y coords of tetris pieces

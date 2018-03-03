@@ -7,6 +7,9 @@ let config_spec = {
       this.player = _manager.get('player').get_player();
       _manager.get('map').change_maps("intro");
     },
+    "post_resource_load": function (manager) {
+      generate_level_resources(manager);
+    },
     "update": function (delta, manager) {
       let controls = manager.get('control'),
         entity_manager = manager.get('entity'),
@@ -124,13 +127,13 @@ let config_spec = {
             first_color = null;
           } else {
             player_manager.modify_player('shape', get_random_shape());
-            first_color = get_random_piece_color();
+            first_color = get_random_piece_color(player.level-1);
           }
           player_manager.modify_player('next_shape', get_random_shape());
           player.next_shape.state = "next";
           player.next_shape.last_x = player.next_shape.x = 440;
           player.next_shape.last_y = player.next_shape.y = 88;
-          color = get_random_piece_color();
+          color = get_random_piece_color(player.level-1);
           for (next_index in player.next_shape.pieces) {
             piece = player.next_shape.pieces[next_index];
             piece.img = color;
@@ -191,14 +194,6 @@ let config_spec = {
                 if (j === 9) {
                   console.log("j is 9");
                   rows_cleared += 1;
-                  audio_manager.play("line_clear");
-                  if (rows_cleared > high_rows) {
-                    high_rows = rows_cleared;
-                  }
-                  score += 100;
-                  if (score > high_score) {
-                    high_score = score;
-                  }
 //                function clear_row_and_copy_others_down(i) {}
                   for (let l = 0; l < 10; l++) {
                     if (rows[ii] === null) {
@@ -238,12 +233,25 @@ let config_spec = {
               }
             }
           }
+          if (rows_cleared > high_rows) {
+            high_rows = rows_cleared;
+          }
+          if (score > high_score) {
+            high_score = score;
+          }
+
           if (rows_cleared - last_rows_cleared >= 4) {
             score += 1000;
-            //audio_manager.play("4_rows");
+            audio_manager.play("4_rows");
+            console.log("playin' 4 rows")
           } else if (rows_cleared - last_rows_cleared >= 2) {
             score += 200;
-            //audio_manager.play("2_rows");
+            audio_manager.play("2_rows");
+            console.log("playin' 2 rows")
+          } else if (rows_cleared - last_rows_cleared >= 1 ) {
+            score += 50;
+            console.log("only did 1 row");
+            audio_manager.play("line_clear");
           }
 
           let progression_length = {
@@ -257,6 +265,7 @@ let config_spec = {
 
           if (rows_cleared !== last_rows_cleared && Math.floor(rows_cleared / progression_length) > player.progress) {
             console.log("going to change levels");
+            audio_manager.play("level_up");
             player.progress = Math.floor(rows_cleared / progression_length);
             if (player.game_type === "progression") {
               player.level += 1;
@@ -276,6 +285,8 @@ let config_spec = {
           if (player.shape.y < 50) {
             console.log("exited because of high static shape");
             player.shape.state = "done";
+            audio_manager.pause_all();
+            audio_manager.play("game_over");
             entity_manager.add_text({
               id: "game_over",
               text: "T E T ﻿Я I S ' D !",
@@ -361,9 +372,15 @@ let config_spec = {
     "base_drop_speed": 0.5,
     "drop_speed_mod": 0,
     "get_speed": function (level) {
-      return [
-        0.5, 0.5, 1, 1.3, 1.6, 1.8, 2, 2.2, 2.4, 2.6, 2.8
-      ][level];
+      let difficulties = [
+        0.6, 1, 1.3, 1.6, 1.9, 2.1, 2.4, 2.6, 2.8, 3
+      ];
+
+      if (level > difficulties.length) {
+        level = difficulties.length - 1;
+      }
+
+      return difficulties[level-1];
     },
     "level": 1,
     "progress": 0,
@@ -779,6 +796,38 @@ let config_spec = {
     },
     {
       "type": "sound",
+      "url": "resources/sounds/2_rows.mp3",
+      "id": "2_rows",
+      "muted": false,
+      "volume": 0.5,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/4_rows.mp3",
+      "id": "4_rows",
+      "muted": false,
+      "volume": 0.5,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/level_up.mp3",
+      "id": "level_up",
+      "muted": false,
+      "volume": 0.2,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/game_over.mp3",
+      "id": "game_over",
+      "muted": false,
+      "volume": 0.8,
+      "looping": false,
+    },
+    {
+      "type": "sound",
       "url": "resources/sounds/selection.mp3",
       "id": "selection",
       "muted": false,
@@ -951,6 +1000,33 @@ let config_spec = {
       "type": "image",
       "url": "resources/images/level_6_tile_6.png",
       "id": "level_6_tile_6",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/mask_1.png",
+      "id": "mask_1",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/mask_2.png",
+      "id": "mask_2",
+      "source_x": 0,
+      "source_y": 0,
+      "source_width": 32,
+      "source_height": 32,
+    },
+    {
+      "type": "image",
+      "url": "resources/images/mask_3.png",
+      "id": "mask_3",
       "source_x": 0,
       "source_y": 0,
       "source_width": 32,
