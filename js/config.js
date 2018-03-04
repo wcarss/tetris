@@ -12,6 +12,7 @@ let config_spec = {
     },
     "update": function (delta, manager) {
       let controls = manager.get('control'),
+        ui = manager.get('ui'),
         entity_manager = manager.get('entity'),
         map_manager = manager.get('map'),
         player_manager = manager.get('player'),
@@ -33,7 +34,8 @@ let config_spec = {
         return;
       }
 
-      if ((controls.keys('KeyP') || controls.keys('Enter') || controls.keys('Escape')) && map_manager.get_current_map_id() !== "intro") {
+      let map_id = map_manager.get_current_map_id();
+      if ((controls.keys('KeyP') || controls.keys('Enter') || controls.keys('Escape')) && map_id !== "intro" && map_id !== "setup" && map_id !== "menu") {
         if ((performance.now() - last_pause_call) > 250) {
           last_pause_call = performance.now();
           if (paused) {
@@ -95,12 +97,85 @@ let config_spec = {
       }
 
       if (map_manager.get_current_map_id() === "intro") {
-        rows = [
-          null, null, null, null, null, null,
-          null, null, null, null, null, null,
-          null, null, null, null, null, null
-        ];
         if (controls.buttons('start_game') || controls.keys('Enter')) {
+          map_manager.change_maps("setup");
+          audio_manager.play("selection");
+          last_pause_call = performance.now();
+        }
+      } else if (map_manager.get_current_map_id() === "setup") {
+        let previous_game_length = player.game_length;
+        let button_hit = false;
+
+        ui.set_button_state("length_" + player.game_length, "selected");
+
+        if (controls.buttons('length_fast')) {
+          player.game_length = "fast";
+        } else if (controls.buttons('length_standard')) {
+          player.game_length = "standard";
+        } else if (controls.buttons('length_long')) {
+          player.game_length = "long";
+        } else if (controls.buttons('length_epic')) {
+          player.game_length = "epic";
+        } else if (controls.buttons('length_marathon')) {
+          player.game_length = "marathon";
+        } else if (controls.buttons('length_methuselah')) {
+          player.game_length = "methuselah";
+        }
+
+        if (previous_game_length !== player.game_length) {
+          ui.set_button_state("length_" + previous_game_length, "deselected");
+          ui.set_button_state("length_" + player.game_length, "selected");
+        }
+
+        let previous_game_type = player.game_type;
+
+        ui.set_button_state("mode_" + player.game_type, "selected");
+
+        if (controls.buttons('mode_static')) {
+          player.game_type = "static";
+        } else if (controls.buttons('mode_progression')) {
+          player.game_type = "progression";
+        } else if (controls.buttons('mode_random')) {
+          player.game_type = "random";
+        }
+
+        if (previous_game_type !== player.game_type) {
+          ui.set_button_state("mode_" + previous_game_type, "deselected");
+          ui.set_button_state("mode_" + player.game_type, "selected");
+        }
+
+        let previously_muted = audio_manager.are_all_muted();
+
+        if (previously_muted) {
+          ui.set_button_state("mute_all", "selected");
+        } else {
+          ui.set_button_state("unmute_all", "selected");
+        }
+
+        if (controls.buttons('mute_all')) {
+          audio_manager.mute_all();
+          ui.set_button_state("mute_all", "selected");
+          ui.set_button_state("unmute_all", "deselected");
+        } else if (controls.buttons('unmute_all')) {
+          audio_manager.unmute_all();
+          ui.set_button_state("mute_all", "deselected");
+          ui.set_button_state("unmute_all", "selected");
+        }
+
+        if ((
+          previously_muted !== audio_manager.are_all_muted() ||
+          previous_game_type !== player.game_type ||
+          previous_game_length !== player.game_length
+        ) && !audio_manager.are_all_muted()) {
+          audio_manager.play("menu_beep");
+        }
+
+        if (performance.now() - last_pause_call > 150 && (controls.buttons('start_game') || controls.keys('Enter'))) {
+          rows = [
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null
+          ];
           map_manager.change_maps("play_area");
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
           audio_manager.play("game_start");
@@ -117,6 +192,8 @@ let config_spec = {
           // awful hack
           last_pause_call = performance.now();
         }
+      } else if (map_manager.get_current_map_id() === "menu") {
+        // .. do nothing!
       } else if (map_manager.get_current_map_id() === "play_area") {
         if (player.shape === null) {
           player_manager.modify_player('x', 168);
@@ -548,6 +625,341 @@ let config_spec = {
         ]
       ]
     },
+    "setup": {
+      "width": 360,
+      "height": 616,
+      "id": "setup",
+      "player_layer": 2,
+      "init": function (manager) {
+        let entity_manager = manager.get('entity');
+
+        entity_manager.add_text({
+          id: "length_text",
+          text: "game length:",
+          x: 60,
+          y: 304-50,
+          offset_type: "fixed",
+          font: "1em sans bold",
+          color: "white",
+          update: function (delta, manager) {},
+        });
+
+        manager.get('ui').add_button({
+          id: "length_fast",
+          x: 95,
+          y: 290-50,
+          width: 240,
+          height: 20,
+          text: 'fast:&nbsp;&nbsp;&nbsp;2&nbsp;rows / level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> fast:&nbsp;&nbsp;&nbsp;2 rows / level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'fast:&nbsp;&nbsp;&nbsp;2 rows / level');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "length_standard",
+          x: 95,
+          y: 310-50,
+          width: 240,
+          height: 20,
+          text: 'standard:&nbsp;&nbsp;&nbsp;10 / level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "selected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> standard:&nbsp;&nbsp;&nbsp;10 / level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'standard:&nbsp;&nbsp;&nbsp;10 / level');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "length_long",
+          x: 95,
+          y: 330-50,
+          width: 240,
+          height: 20,
+          text: 'long:&nbsp;&nbsp;&nbsp;20 / level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> long:&nbsp;&nbsp;&nbsp;20 / level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'long:&nbsp;&nbsp;&nbsp;20 / level');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "length_epic",
+          x: 95,
+          y: 350-50,
+          width: 240,
+          height: 20,
+          text: 'epic:&nbsp;&nbsp;&nbsp;30 / level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> epic:&nbsp;&nbsp;&nbsp;30 / level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'epic:&nbsp;&nbsp;&nbsp;30 / level');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "length_marathon",
+          x: 95,
+          y: 370-50,
+          width: 240,
+          height: 20,
+          text: 'marathon:&nbsp;&nbsp;&nbsp;50 / level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> marathon:&nbsp;&nbsp;&nbsp;50 / level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'marathon:&nbsp;&nbsp;&nbsp;50 / level');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "length_methuselah",
+          x: 95,
+          y: 390-50,
+          width: 240,
+          height: 20,
+          text: 'methuselah:&nbsp;&nbsp;&nbsp;100 / level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> methuselah:&nbsp;&nbsp;&nbsp;100 / level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'methuselah:&nbsp;&nbsp;&nbsp;100 / level');
+            }
+          },
+        });
+
+        entity_manager.add_text({
+          id: "mode_text",
+          text: "game type:",
+          x: 60,
+          y: 444-50,
+          offset_type: "fixed",
+          font: "1em sans bold",
+          color: "white",
+          update: function (delta, manager) {},
+        });
+
+        manager.get('ui').add_button({
+          id: "mode_progression",
+          x: 95,
+          y: 430-50,
+          width: 240,
+          height: 20,
+          text: 'progression',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "selected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> progressive levels <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'progressive levels');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "mode_static",
+          x: 95,
+          y: 450-50,
+          width: 240,
+          height: 20,
+          text: 'static level',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> static level <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'static level');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "mode_random",
+          x: 95,
+          y: 470-50,
+          width: 240,
+          height: 20,
+          text: 'random levels',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> random levels <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'random levels');
+            }
+          },
+        });
+
+        entity_manager.add_text({
+          id: "mute_text",
+          text: "sound controls:",
+          x: 60,
+          y: 524-50,
+          offset_type: "fixed",
+          font: "1em sans bold",
+          color: "white",
+          update: function (delta, manager) {},
+        });
+
+        manager.get('ui').add_button({
+          id: "mute_all",
+          x: 95,
+          y: 510-50,
+          width: 240,
+          height: 20,
+          text: 'sound: off',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "selected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> sound: off <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'sound: off');
+            }
+          },
+        });
+        manager.get('ui').add_button({
+          id: "unmute_all",
+          x: 95,
+          y: 530-50,
+          width: 240,
+          height: 20,
+          text: 'sound: on',
+          style: 'color: white; font-size: 1em; text-align: right',
+          state: "deselected",
+          on_state_change: function (manager, state) {
+            let change_text = manager.get('ui').set_button_text;
+
+            if (state === "selected") {
+              change_text(this.id, '> sound: on <');
+            } else if (state === "deselected") {
+              change_text(this.id, 'sound: on');
+            }
+          },
+        });
+
+        manager.get('ui').add_button({
+          id: "start_game",
+          x: 50,
+          y: 565-33,
+          width: 240,
+          height: 20,
+          text: '',
+          style: 'color: white; font-size: 1.4em; text-align: center'
+        });
+        console.log("map " + this.id + ": initialized");
+      },
+      "deinit": function (manager) {
+        manager.get('ui').remove_button("length_fast");
+        manager.get('ui').remove_button("length_standard");
+        manager.get('ui').remove_button("length_long");
+        manager.get('ui').remove_button("length_epic");
+        manager.get('ui').remove_button("length_marathon");
+        manager.get('ui').remove_button("length_methuselah");
+        manager.get('ui').remove_button("mode_progression");
+        manager.get('ui').remove_button("mode_static");
+        manager.get('ui').remove_button("mode_random");
+        manager.get('ui').remove_button("mute_all");
+        manager.get('ui').remove_button("unmute_all");
+        manager.get('ui').remove_button("start_game");
+        manager.get('entity').remove_text("length_text");
+        manager.get('entity').remove_text("mode_text");
+        manager.get('entity').remove_text("mute_text");
+        console.log("map " + this.id + ": de-initialized");
+      },
+      "layers": [
+        [
+          {
+            "id": "bg1",
+            "img": "background_blue",
+            "x": -3200,
+            "y": -3200,
+            "x_scale": 300,
+            "y_scale": 300,
+            "x_size": 6400,
+            "y_size": 6400,
+            "layer": -1,
+          }
+        ],
+        [
+          {
+            "id": "background_black",
+            "img": "background_black",
+            "x": 40,
+            "y": 40,
+            "x_scale": 10,
+            "y_scale": 18,
+            "x_size": 320,
+            "y_size": 576,
+            "layer": -0.5,
+          }
+        ],
+        [
+          {
+            x: 40,
+            y: 110,
+            x_size: 320,
+            y_size: 94,
+            x_scale: 1,
+            y_scale: 1,
+            img: "logo",
+            id: "logo",
+            layer: 1,
+          },
+          {
+            x: 144,
+            y: 532,
+            x_size: 107,
+            y_size: 31,
+            x_scale: 1,
+            y_scale: 1,
+            img: "start",
+            id: "start",
+            layer: 1,
+          }
+        ]
+      ]
+    },
     "play_area": {
       "id": "play_area",
       "width": 360,
@@ -841,6 +1253,14 @@ let config_spec = {
       "id": "block_rotate",
       "muted": false,
       "volume": 0.15,
+      "looping": false,
+    },
+    {
+      "type": "sound",
+      "url": "resources/sounds/menu_beep.mp3",
+      "id": "menu_beep",
+      "muted": false,
+      "volume": 0.25,
       "looping": false,
     },
     {
