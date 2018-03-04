@@ -1701,10 +1701,10 @@ let AudioManager = (function () {
           this.element.currentTime = time;
         },
         mute: function () {
-          this.element.mute = true;
+          this.element.muted = true;
         },
         unmute: function () {
-          this.element.mute = false;
+          this.element.muted = false;
         },
         loop: function (looping_bool) {
           this.element.loop = looping_bool;
