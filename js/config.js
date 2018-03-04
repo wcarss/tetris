@@ -103,7 +103,7 @@ let config_spec = {
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area");
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
-          audio_manager.play("selection");
+          audio_manager.play("game_start");
           audio_manager.play("song_" + (random_int(3)+1));
           score = 0;
           rows_cleared = 0;
