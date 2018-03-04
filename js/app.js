@@ -18,6 +18,7 @@ function generate_level_resources(manager) {
   let mask = null;
   let colour_set_index = null;
   let colour_set = null;
+  let inner_colour_set = null;
   let colour_index = null;
   let colour = null;
   let temp_canvas = null;
@@ -87,8 +88,20 @@ function generate_level_resources(manager) {
     mask = masks[mask_index];
     for (colour_set_index in colour_sets) {
       colour_set = colour_sets[colour_set_index];
-      for (colour_index in colour_set) {
-        colour = colour_set[colour_index];
+      // mask indices 1 and 2 are both mostly white background
+      // to make the game more colorful, we limit the generated
+      // tiles for these masks to 1 random colour from each set
+      if (mask_index === 1) {
+        inner_colour_set = [];
+      } else if (mask_index === 2) {
+        inner_colour_set = [array_random(colour_set)];
+      } else {
+        // mask 0 is mostly colour, so we generate a tile for every
+        // colour in the set for it.
+        inner_colour_set = colour_set;
+      }
+      for (colour_index in inner_colour_set) {
+        colour = inner_colour_set[colour_index];
         temp_canvas = document.createElement("canvas");
         temp_canvas.width = mask.source_width;
         temp_canvas.height = mask.source_height;
@@ -116,6 +129,9 @@ function generate_level_resources(manager) {
 function get_random_piece_color(level) {
   let colour = random_int(2);
   let mask = random_int(3);
+  if (mask > 0) {
+    colour = 0;
+  }
 
   return tile_id(level, colour, mask);
 }

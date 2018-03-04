@@ -99,7 +99,7 @@ let config_spec = {
           null, null, null, null, null, null,
           null, null, null, null, null, null,
           null, null, null, null, null, null
-        ]; 
+        ];
         if (controls.buttons('start_game') || controls.keys('Enter')) {
           map_manager.change_maps("play_area");
           player_manager.modify_player('layer', map_manager.get_map().player_layer);
