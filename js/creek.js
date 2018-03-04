@@ -1572,7 +1572,8 @@ let AudioManager = (function () {
     clips = null,
     default_volume = null,
     resource_manager = null,
-    currently_paused = null;
+    currently_paused = null,
+    all_muted = null;
 
   let get_clip = function (clip_id) {
       let sounds = null;
@@ -1688,6 +1689,8 @@ let AudioManager = (function () {
       for (i in clips) {
         clips[i].mute();
       }
+
+      all_muted = true;
     },
     unmute_all = function (level) {
       let i = null;
@@ -1695,6 +1698,11 @@ let AudioManager = (function () {
       for (i in clips) {
         clips[i].unmute();
       }
+
+      all_muted = false;
+    },
+    are_all_muted = function () {
+      return all_muted;
     };
 
   let load_clips = function (loaded_clips) {
@@ -1774,6 +1782,7 @@ let AudioManager = (function () {
     manager = _manager;
     default_volume = manager.get('config').get_config()['default_volume'] || 1;
     currently_paused = [];
+    all_muted = false;
     resource_manager = manager.get('resource');
   };
 
@@ -1802,6 +1811,7 @@ let AudioManager = (function () {
       volume_all: volume_all,
       mute_all: mute_all,
       unmute_all: unmute_all,
+      are_all_muted: are_all_muted,
       load_clips: load_clips,
     };
   };
