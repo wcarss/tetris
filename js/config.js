@@ -335,12 +335,12 @@ let config_spec = {
             "fast": 2,
           }[player.game_length];
 
-          if (rows_cleared !== last_rows_cleared && Math.floor(rows_cleared / progression_length) > player.progress) {
+          let new_progress = Math.floor(rows_cleared / progression_length);
+          if (rows_cleared !== last_rows_cleared && new_progress > player.progress) {
             console.log("going to change levels");
             audio_manager.play("level_up");
-            player.progress = Math.floor(rows_cleared / progression_length);
             if (player.game_type === "progression") {
-              player.level += 1;
+              player.level += new_progress-player.progress;
               player.drop_speed_mod = player.get_speed(player.level);
               if (player.level > 10) {
                 console.log("... you win.");
@@ -351,6 +351,7 @@ let config_spec = {
               ]);
               player.drop_speed_mod = player.get_speed(player.level);
             }
+            player.progress = new_progress;
          }
 
           // check_lines();
