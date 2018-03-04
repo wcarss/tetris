@@ -52,7 +52,7 @@ let config_spec = {
               }
             });
             audio_manager.pause_all();
-            audio_manager.play("game_start");
+            audio_manager.play("selection");
           }
           paused = !paused;
           player.paused = paused;
