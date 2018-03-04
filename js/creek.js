@@ -866,6 +866,29 @@ let UIManager = (function () {
 
       return button;
     },
+    set_button_text = function (id, text) {
+      let button = buttons[id];
+
+      if (!button || !button.element) {
+        return null;
+      };
+
+      button.element.innerHTML = text;
+    },
+    set_button_state = function (id, state) {
+      let button = buttons[id];
+
+      if (!button) {
+        return null;
+      }
+
+      button.previous_state = button.state;
+      button.state = state;
+
+      if (button.on_state_change) {
+        button.on_state_change(manager, state);
+      }
+    },
     get_buttons = function () {
       return buttons;
     },
@@ -882,6 +905,8 @@ let UIManager = (function () {
       get_buttons: get_buttons,
       add_button: add_button,
       remove_button: remove_button,
+      set_button_text: set_button_text,
+      set_button_state: set_button_state,
     };
   };
 })();
