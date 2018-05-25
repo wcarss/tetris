@@ -1,35 +1,42 @@
 "use strict";
 let GameManager = (function () {
-  let init = function () {
-    console.log("GameManager init.");
-    let config_manager = ConfigManager(),
+  let manager = null,
+    get_scripts = function () {
+      return manager.get('script').get_scripts();
+    },
+    init = function () {
+      console.log("GameManager init.");
+      let config_manager = ConfigManager();
+
       manager = Manager();
 
-    manager.init({
-      audio: AudioManager(),
-      camera: CameraManager(),
-      config: config_manager,
-      context: ContextManager(),
-      control: ControlManager(),
-      cookie: CookieManager(),
-      entity: EntityManager(),
-      game_state: config_manager.get_game_state(),
-      map: MapManager(),
-      physics: PhysicsManager(),
-      player: PlayerManager(),
-      render: RenderManager(),
-      request: RequestManager(),
-      resource: ResourceManager(),
-      ui: UIManager(),
-    });
+      manager.init({
+        audio: AudioManager(),
+        camera: CameraManager(),
+        config: config_manager,
+        context: ContextManager(),
+        control: ControlManager(),
+        cookie: CookieManager(),
+        entity: EntityManager(),
+        game_state: config_manager.get_game_state(),
+        map: MapManager(),
+        physics: PhysicsManager(),
+        player: PlayerManager(),
+        render: RenderManager(),
+        request: RequestManager(),
+        resource: ResourceManager(),
+        script: ScriptManager(),
+        ui: UIManager(),
+      });
 
-    manager.get('audio').load_clips(manager.get('resource').get_resources()['sound']);
-    manager.get('render').next_frame();
-  };
+      manager.get('audio').load_clips(manager.get('resource').get_resources()['sound']);
+      manager.get('render').next_frame();
+    };
 
   return function () {
     return {
       init: init,
+      get_scripts: get_scripts
     };
   };
 })();
@@ -92,8 +99,12 @@ let ConfigManager = (function () {
       config = JSON.parse(config_spec);
       return config;
     },
-    get = function () {
-      return config;
+    get = function (id) {
+      if (id) {
+        return config[id];
+      } else {
+        return config;
+      }
     },
     set = function (k, v) {
       config[k] = v;
@@ -105,15 +116,17 @@ let ConfigManager = (function () {
     get_maps = function () {
       let map = null,
         id = null,
+        script = null,
         loading = [],
         defined = { ... config.maps },
-        i = null;
+        i = null,
+        script_manager = manager.get('script');
 
       if (defined.to_load) {
         for (i in defined.to_load) {
           map = defined.to_load[i];
-          id = request_manager.get("resources/maps/" + map + ".json", map);
-          loading.push(id);
+          script = script_manager.load_script(map, "resources/maps/");
+          loading.push(script.id);
         }
         delete defined.to_load;
       }
@@ -149,6 +162,7 @@ let ConfigManager = (function () {
     return {
       init: init,
       get_config: get,
+      get: get,
       set_config: set,
       get_player: get_player,
       get_maps: get_maps,
@@ -158,6 +172,116 @@ let ConfigManager = (function () {
   };
 })();
 
+
+let ScriptManager = (function () {
+  let manager = null,
+    scripts = {},
+    default_path = null,
+    new_script = function (id, path) {
+      let script = null;
+      path = path || default_path;
+
+      if (scripts[id]) {
+        console.log("attempted to overwrite script " + id);
+        return;
+      }
+
+      script = {
+        id: id,
+        url: path + id + ".js",
+        element: null,
+        loaded: null,
+        status: null,
+      };
+
+      scripts[id] = script;
+      return script;
+    },
+    load_script = function (id, path) {
+      let script = new_script(id, path);
+
+      if (script.element) {
+        console.log("attempted to overwrite script " + id + "'s element");
+        return;
+      }
+
+      script.element = document.createElement("script");
+      script.element.setAttribute('type', 'text/javascript');
+      script.element.setAttribute('async', true);
+      script.element.setAttribute('id', script.id);
+      script.element.onload = function () {
+        script.status = "success";
+        script.loaded = true;
+      };
+      script.element.onerror = function () {
+        console.log("error loading " + script.id + " script!");
+        script.status = "error";
+        script.loaded = false;
+      }
+
+      script.status = "loading";
+      script.element.setAttribute('src', script.url);
+
+      document.body.appendChild(script.element);
+      return script;
+    },
+    load_scripts = function (script_ids, path) {
+      let i = null;
+
+      for (i in script_ids) {
+        load_script(script_ids[i], path);
+      }
+    },
+    get_script = function (id) {
+      return scripts[id];
+    },
+    get_scripts = function () {
+      return scripts;
+    },
+    all_loaded = function () {
+      let i = null;
+
+      for (i in scripts) {
+        if (scripts[i].loaded !== true) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    errors = function () {
+      let i = null,
+        errors = [];
+
+      for (i in scripts) {
+        if (scripts[i].status === "error") {
+          errors.push(scripts[i].id);
+        }
+      }
+
+      return errors;
+    },
+    init = function (_manager) {
+      let config_path = null;
+      console.log("ScriptManager init.");
+
+      manager = _manager;
+      config_path = manager.get('config').get('script_path');
+      default_path = config_path || "/resources/scripts/";
+    };
+
+  return function () {
+    return {
+      init: init,
+      load_script: load_script,
+      load_scripts: load_scripts,
+      get_script: get_script,
+      get_scripts: get_scripts,
+      all_loaded: all_loaded,
+      errors: errors
+    };
+  };
+})();
 
 
 let RequestManager = (function () {
@@ -335,6 +459,10 @@ let ContextManager = (function () {
 
       stage = document.getElementById("stage");
       canvas = document.createElement("canvas");
+
+      document.body.style.overflow = "hidden";
+      stage.style.overflow = "hidden";
+      canvas.style.overflow = "hidden";
       canvas.id = canvas_id;
       canvas.style.display = "block";
 
@@ -356,6 +484,7 @@ let ContextManager = (function () {
       set_canvas: set_canvas,
       get_width: get_width,
       get_height: get_height,
+      resize: resize,
     };
   };
 })();
@@ -464,10 +593,10 @@ let CameraManager = (function () {
         resize(context_manager.get_width(), context_manager.get_height());
       }
 
-      let bounds = map_manager.get_bounds();
+      let bounds = manager.get('map').get_bounds();
 
-      x = clamp(x, bounds.x, bounds.width);
-      y = clamp(y, bounds.y, bounds.height);
+      x = clamp(x, bounds.x, bounds.width-camera.width);
+      y = clamp(y, bounds.y, bounds.height-camera.height);
 
       camera.x = x;
       camera.y = y;
@@ -491,7 +620,6 @@ let CameraManager = (function () {
 
       fullscreen = config.fullscreen || false;
 
-      map_manager = manager.get('map');
       context_manager = manager.get('context');
 
       if (fullscreen) {
@@ -682,7 +810,13 @@ let ControlManager = (function () {
       return controls.buttons[id] && controls.buttons[id].down;
     },
     mouse = function () {
-      return contols.mouse.down;
+      return controls.mouse.down;
+    },
+    mouse_coords = function () {
+      return {
+        x: controls.mouse.x,
+        y: controls.mouse.y
+      };
     },
     get_controls = function () {
       return controls;
@@ -743,6 +877,8 @@ let ControlManager = (function () {
 
       window.addEventListener("mousedown", function (e) {
         controls.mouse.down_event = e;
+        controls.mouse.x = e.x;
+        controls.mouse.y = e.y;
         controls.mouse.down = true;
         controls.mouse.down_at = performance.now();
       });
@@ -760,6 +896,8 @@ let ControlManager = (function () {
 
       window.addEventListener("mousemove", function (e) {
         controls.mouse.move_event = e;
+        controls.mouse.x = e.x;
+        controls.mouse.y = e.y;
         if (controls.mouse.down === true && controls.mouse.dragging !== true) {
           controls.mouse.dragging = true;
           controls.mouse.dragging_at = performance.now();
@@ -777,6 +915,7 @@ let ControlManager = (function () {
       keys: keys,
       buttons: buttons,
       mouse: mouse,
+      mouse_coords: mouse_coords,
     };
   };
 })();
@@ -946,22 +1085,29 @@ let MapManager = (function () {
     change_maps = function (map_id) {
       let now = performance.now();
 
-      // only change maps every min_change_time ms
-      if (now - last_change_time > min_change_time) {
-        // teardown actions in old map (if any)
-        if (maps[current_map_id].deinit) {
-          maps[current_map_id].deinit(manager);
-        }
-
-        // actually change the map
-        current_map_id = map_id;
-
-        // setup actions in new map (if any)
-        if (maps[current_map_id].init) {
-          maps[current_map_id].init(manager);
-        }
-        last_change_time = now;
+      // don't allow changes too frequently or if still loading
+      if (maps[map_id].initialized || (is_loading(map_id) || (last_change_time && (now - last_change_time < min_change_time)))) {
+        return false;
       }
+
+      // teardown actions in old map (if any)
+      if (maps[current_map_id].initialized && last_change_time !== null && maps[current_map_id].deinit) {
+        maps[current_map_id].deinit(manager);
+        maps[current_map_id].initialized = false;
+      }
+
+      // actually change the map
+      current_map_id = map_id;
+      manager.get('entity').setup_entities();
+
+      // setup actions in new map (if any)
+      if (maps[current_map_id].init) {
+        maps[current_map_id].init(manager);
+        maps[current_map_id].initialized = true;
+      }
+
+      last_change_time = now;
+      return true;
     },
     get_quadtree = function (map, leaf_size) {
       let i = null, j = null;
@@ -988,12 +1134,24 @@ let MapManager = (function () {
     },
     load_if_needed = function () {
       let to_remove = [],
-        i = null;
+        i = null,
+        script_manager = manager.get('script'),
+        map_manager = manager.get('map'),
+        script = null;
 
       for (i in loading) {
-        data = request_manager.get_data(loading[i]);
-        if (data && data.map) {
-          maps[data.map.id] = data.map;
+        script = script_manager.get_script(loading[i]);
+
+        if (!script) {
+          script = script_manager.load_script(loading[i]);
+        }
+
+        if (script.loaded && script.data) {
+          maps[script.data.map.id] = script.data.map;
+          maps[script.data.map.id].loading = false;
+          if (script.data.map.id == map_manager.get_current_map_id()) {
+            map_manager.change_maps(script.data.map.id);
+          }
           to_remove.push(i);
         }
       }
@@ -1002,7 +1160,8 @@ let MapManager = (function () {
         loading.splice(to_remove[i], 1);
       }
     },
-    is_loading = function () {
+    is_loading = function (map_id) {
+      map_id = map_id || current_map_id;
       return maps[current_map_id].loading;
     },
     init = function (_manager) {
@@ -1024,7 +1183,6 @@ let MapManager = (function () {
       }
       min_change_time = config['min_map_change_time'] || 150;
       current_map_id = config['initial_map_id'];
-      last_change_time = 0;
     };
 
   return function () {
@@ -1111,19 +1269,19 @@ let PhysicsManager = (function () {
       let ret = null;
 
       if (debug) {
-        console.log("entity one, a: " + a);
-        console.log("entity two, b: " + b);
-        console.log("d1x, d1y, d2x, d2y: " + d1x + ", " + d2x + ", " + d1y + ", " + d2y);
+        console.log("entity one, a: " + JSON.stringify(a));
+        console.log("entity two, b: " + JSON.stringify(b));
+        console.log("d1x, d2x, d1y, d2y: " + d1x + ", " + d2x + ", " + d1y + ", " + d2y);
       }
 
       if (d1x > 0 || d1y > 0 || d2x > 0 || d2y > 0) {
         ret = false;
+      } else {
+        ret = true;
       }
 
-      ret = true;
-
       if (debug) {
-        console.log("aabb_collide returning " + ret);
+        console.log("aabb_collide returningLKJLJLKJ " + ret);
       }
 
       return ret;
@@ -1226,11 +1384,11 @@ let PhysicsManager = (function () {
        *
        */
 
-      if (one_high <= two_low) {
+      if (one_high < two_low) {
         return "below";
       }
 
-      if (one_low >= two_high) {
+      if (one_low > two_high) {
         return "above";
       }
 
@@ -1338,28 +1496,7 @@ let EntityManager = (function () {
     game_state = null,
     last_loading = null,
     just_loaded = null,
-    stale_entities = function () {
-      let debug = true;
-      let loading = maps.is_loading();
-      let stale = current_map_id !== maps.get_current_map_id();
-      if (debug && loading && (!last_loading || performance.now() - last_loading > 300)) {
-        last_loading = performance.now();
-        console.log("loading...");
-      }
-
-      if (!loading && last_loading !== null) {
-        last_loading = null;
-        stale = true;
-        just_loaded = true;
-        console.log("forced staleness to help load.");
-      }
-
-      if (debug && stale) {
-        console.log("found stale entities.");
-      }
-
-      return loading || stale;
-    },
+    last_updated = null,
     get_entity = function (id) {
       let i = null;
 
@@ -1375,13 +1512,18 @@ let EntityManager = (function () {
     clear_entities = function () {
       console.log("clearing all entities yo");
     },
-    get_entities = function () {
+    get_entities = function (options) {
+      options = options || {};
+      let setup = options.setup;
+
       if (maps.is_loading()) {
         return entities;
       }
-      if (stale_entities()) {
-        setup_entities();
+
+      if (!setup && last_updated && (performance.now() - last_updated < 50)) {
+        return entities;
       }
+      last_updated = performance.now();
 
       let camera = camera_manager.get_camera(),
         x = camera.x-camera.left_margin,
@@ -1390,10 +1532,17 @@ let EntityManager = (function () {
         height = camera.height+camera.bottom_margin;
 
       let et = quadtree_get_by_range(tree, x, y, x+width, y+height);
+      let control_manager = manager.get('control');
+      if (control_manager.keys('KeyP')) {
+        debugger;
+      }
 
-      let background = quadtree_get_by_id(tree, "bg1");
-      if (background) {
-        et.push(quadtree_get_by_id(tree, "bg1"));
+      let background = null;
+      if (manager.get('map').get_map().needs_bg) {
+        background = quadtree_get_by_id(tree, "bg1");
+        if (background) {
+          et.push(background);
+        }
       }
 
       return et.sort(
@@ -1407,19 +1556,25 @@ let EntityManager = (function () {
     },
     setup_entities = function () {
       let current_map = maps.get_map(),
-        layers = current_map.layers,
-        map_bg = {
-          "id": "bg1",
-          "img": "bg",
-          "x": 0,
-          "y": 0,
-          "x_scale": 12,
-          "y_scale": 12,
-          "x_size": current_map.width,
-          "y_size": current_map.height,
-          "layer": -999999,
-        };
+        layers = null,
+        map_bg = null;
 
+      if (maps.is_loading(current_map.id)) {
+        return false;
+      }
+
+      layers = current_map.layers;
+      map_bg = {
+        "id": "bg1",
+        "img": "bg",
+        "x": 0,
+        "y": 0,
+        "x_scale": 12,
+        "y_scale": 12,
+        "x_size": current_map.width,
+        "y_size": current_map.height,
+        "layer": -99,
+      };
       current_map_id = current_map.id;
 
       if (current_map.loading && !entities) {
@@ -1449,22 +1604,19 @@ let EntityManager = (function () {
       player.modify_player('layer', current_map.player_layer);
       tree = maps.get_quadtree(current_map);
       layers.splice(current_map.player_layer, 1);
-      entities = get_entities();
+      entities = get_entities({setup: true});
     },
     move_entity = function (entity, x, y) {
       if (maps.is_loading()) {
         return;
       }
-      quadtree_remove_by_id(tree, entity.id);
-      entity.x = x;
-      entity.y = y;
-      quadtree_insert(tree, entity);
+      quadtree_move(tree, entity, x, y);
     },
     add_entity = function (entity) {
       quadtree_insert(tree, entity);
     },
     remove_entity = function (id) {
-      quadtree_remove_by_id(tree, id);
+      return quadtree_remove_by_id(tree, id);
     },
     add_text = function (text) {
       text.offset_type = text.offset_type || "camera";
@@ -1491,10 +1643,6 @@ let EntityManager = (function () {
         target = null,
         i = null;
 
-      if (stale_entities()) {
-        setup_entities();
-      }
-
       for (i in entities) {
         target = entities[i];
         if (target.active !== false && entity.id !== target.id && physics.collide(entity, target)) {
@@ -1504,15 +1652,12 @@ let EntityManager = (function () {
 
       return collisions;
     },
-    update = function (delta) {
+    update = function (delta, manager) {
       let ei = null,
         ti = null;
 
-      if (stale_entities()) {
-        setup_entities();
-      }
-
       entities = get_entities();
+
       for (ei in entities) {
         if (entities[ei].update) {
           entities[ei].update(delta, manager);
@@ -1533,13 +1678,14 @@ let EntityManager = (function () {
       console.log("EntityManager init.");
       manager = _manager;
       let tp = player = manager.get('player');
+      texts = [];
       camera_manager = manager.get('camera');
       maps = manager.get('map');
       physics = manager.get('physics');
       console.log("setting up the ui manager");
       game_state = manager.get('game_state');
       last_particle_added = performance.now();
-      texts = [];
+      maps.change_maps(maps.get_current_map_id());
       setup_entities();
     };
 
@@ -1549,7 +1695,6 @@ let EntityManager = (function () {
       init: init,
       get_entities: get_entities,
       get_entity: get_entity,
-      stale_entities: stale_entities,
       setup_entities: setup_entities,
       update: update,
       collide: collide,
@@ -1831,7 +1976,16 @@ let RenderManager = (function () {
 
     draw = function (tile, context, delta, offset) {
       let resource = resources.get_image(tile.img),
-        source_x = 0, source_y = 0, source_width = 0, source_height = 0;
+        source_x = 0, source_y = 0, source_width = 0, source_height = 0,
+        x_pos = 0, y_pos = 0,
+        saved_style = null;
+
+      x_pos = tile.x - offset.x;
+      y_pos = tile.y - offset.y
+      if (tile.offset_type === "camera") {
+        x_pos = tile.ui_x;
+        y_pos = tile.ui_y;
+      }
 
       if (resource && tile.active !== false) {
         source_x = tile.source_x || resource.source_x;
@@ -1843,10 +1997,20 @@ let RenderManager = (function () {
           resource.img,
           source_x, source_y,
           source_width, source_height,
-          tile.x-offset.x, tile.y-offset.y,
+          x_pos, y_pos,
           tile.x_scale * source_width,
           tile.y_scale * source_height
         );
+      } else if (tile.render_type === "fillRect") {
+        saved_style = context.fillStyle;
+        context.fillStyle = tile.img;
+        context.fillRect(x_pos, y_pos, tile.x_size, tile.y_size);
+        context.fillStyle = saved_style;
+      } else if (tile.render_type === "strokeRect") {
+        saved_style = context.strokeStyle;
+        context.strokeStyle = tile.img;
+        context.strokeRect(x_pos, y_pos, tile.x_size, tile.y_size);
+        context.strokeStyle = saved_style;
       }
     },
     text_draw = function (text, context, delta, offset) {
@@ -1862,10 +2026,9 @@ let RenderManager = (function () {
       context.font = text.font;
       context.fillText(text.text, x, y);
     },
-    next_frame = function (t) {
+    next_frame = function () {
       current_time = performance.now();
-      let elapsed = current_time - last_time;
-      let delta = (elapsed/1000) * frames_per_second;
+      let delta = ((current_time - last_time)/1000) * frames_per_second;
       let di = null,
         ti = null;
       last_time = current_time;
@@ -1881,7 +2044,7 @@ let RenderManager = (function () {
       for (ti in text_list) {
         text_draw(text_list[ti], context, delta, world_offset);
       }
-      entities.update(delta);
+      entities.update(delta, manager);
       entities.load_if_needed();
 
       requestAnimationFrame(next_frame);

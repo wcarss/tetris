@@ -234,7 +234,11 @@ let config_spec = {
             piece.y = player.shape.y + piece.rel_y * piece.y_size;
             piece.last_x = piece.x;
             piece.last_y = piece.y;
-            entity_manager.move_entity(piece, piece.x, piece.y);
+            if (first_color) {
+              entity_manager.add_entity(piece);
+            } else {
+              entity_manager.move_entity(piece, piece.x, piece.y);
+            }
           }
         } else if (player.shape.state === "static") {
           for (shape_piece_index in player.shape.pieces) {
@@ -403,7 +407,8 @@ let config_spec = {
   },
   "canvas_id": "canvas",
   "stage_id": "stage",
-  "fullscreen": true,
+  "fullscreen": false,
+  "needs_bg": false,
   "frames_per_second": 40,
   "resource_url": "resources.json",
   "controls": null,
@@ -523,15 +528,16 @@ let config_spec = {
         }
 
         entity_manager.move_entity(this, this.x, this.y);
-        manager.get('camera').center(-40, -40);
       }
     }
   },
+  "width": 560,
+  "height": 616,
   "camera": {
     "x": 0,
     "y": 0,
-    "width": 360,
-    "height": 576,
+    "width": 560,
+    "height": 700,
     "left_margin": 96,
     "right_margin": 96,
     "top_margin": 100,
@@ -542,7 +548,7 @@ let config_spec = {
     "to_load": [
     ],
     "intro": {
-      "width": 360,
+      "width": 560,
       "height": 616,
       "id": "intro",
       "player_layer": 2,
@@ -627,7 +633,7 @@ let config_spec = {
       ]
     },
     "setup": {
-      "width": 360,
+      "width": 560,
       "height": 616,
       "id": "setup",
       "player_layer": 2,
@@ -963,7 +969,7 @@ let config_spec = {
     },
     "play_area": {
       "id": "play_area",
-      "width": 360,
+      "width": 560,
       "height": 616,
       "player_layer": 2,
       "init": function (manager) {
@@ -971,7 +977,7 @@ let config_spec = {
         entity_manager.add_text({
           id: "level",
           text: "level: --",
-          x: 384,
+          x: 384+40,
           y: 256,
           offset_type: "fixed",
           font: "16px sans bold",
@@ -989,7 +995,7 @@ let config_spec = {
         entity_manager.add_text({
           id: "score",
           text: "score:",
-          x: 384,
+          x: 384+40,
           y: 276,
           offset_type: "fixed",
           font: "16px sans bold",
@@ -1006,7 +1012,7 @@ let config_spec = {
         entity_manager.add_text({
           id: "high_score",
           text: "high score: ",
-          x: 384,
+          x: 384+40,
           y: 296,
           offset_type: "fixed",
           font: "16px sans bold",
@@ -1023,7 +1029,7 @@ let config_spec = {
         entity_manager.add_text({
           id: "rows_cleared",
           text: "rows: ",
-          x: 384,
+          x: 384+40,
           y: 316,
           offset_type: "fixed",
           font: "16px sans bold",
@@ -1040,7 +1046,7 @@ let config_spec = {
         entity_manager.add_text({
           id: "high_rows",
           text: "high_rows: ",
-          x: 384,
+          x: 384+40,
           y: 336,
           offset_type: "fixed",
           font: "16px sans bold",
@@ -1113,39 +1119,55 @@ let config_spec = {
           },
           {
             "id": "bound_left",
-            "img": "nonexistent",
+            "img": "rgb(255, 255, 255)",
+            "render_type": "fillRect",
             "x": 0,
             "y": 0,
             "x_scale": 1,
             "y_scale": 1,
             "x_size": 39,
             "y_size": 1000,
-            "layer": -0.5,
+            "layer": 3.5,
             "type": "bound",
           },
           {
             "id": "bound_right",
-            "img": "nonexistent",
+            "img": "rgb(255, 255, 255)",
+            "render_type": "fillRect",
             "x": 361,
             "y": 0,
             "x_scale": 1,
             "y_scale": 1,
             "x_size": 40,
             "y_size": 1000,
-            "layer": -0.5,
+            "layer": 1.5,
             "type": "bound",
           },
           {
             "id": "bound_bottom",
-            "img": "nonexistent",
+            "img": "rgb(255, 255, 255)",
+            "render_type": "fillRect",
             "x": 0,
             "y": 617,
             "x_scale": 1,
             "y_scale": 1,
-            "x_size": 400,
+            "x_size": 700,
             "y_size": 40,
-            "layer": -0.5,
+            "layer": 3.5,
             "type": "bound",
+          },
+          {
+            "id": "bound_top",
+            "img": "rgb(255, 255, 255)",
+            "render_type": "fillRect",
+            "x": 0,
+            "y": 0,
+            "x_scale": 1,
+            "y_scale": 1,
+            "x_size": 700,
+            "y_size": 40,
+            "layer": 3.5,
+            "type": "not a bound",
           },
         ] // layer
       ]   // array of layers
