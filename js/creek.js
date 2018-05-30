@@ -27,10 +27,12 @@ let GameManager = (function () {
         resource: ResourceManager(),
         script: ScriptManager(),
         ui: UIManager(),
+        data: DataManager(),
+        time: TimeManager()
       });
 
       manager.get('audio').load_clips(manager.get('resource').get_resources()['sound']);
-      manager.get('render').next_frame();
+      requestAnimationFrame(manager.get('render').lead_in);
     };
 
   return function () {
@@ -679,16 +681,41 @@ let ResourceManager = (function () {
         function(resolve, reject) {
           img.addEventListener("load", function () {
             console.log("image " + resource.url + " loaded.");
+            let local_canvas = document.createElement("canvas");
+            let local_context = null;
+
+            let dest_x = resource.x || 0;
+            let dest_y = resource.y || 0;
+            let dest_width = resource.width || resource.source_width;
+            let dest_height = resource.height || resource.source_height;
+
+            local_canvas.width = dest_width;
+            local_canvas.height = dest_height;
+            local_context = local_canvas.getContext("2d");
+
+            local_context.drawImage(
+              img,
+              resource.source_x, resource.source_y,
+              resource.source_width, resource.source_height,
+              dest_x, dest_y,
+              dest_width, dest_height
+            );
+
             resolve({
               "type": resource.type,
               "id": resource.id,
               "url": resource.url,
-              "img": img,
-              "source_x": resource.source_x,
-              "source_y": resource.source_y,
-              "source_width": resource.source_width,
-              "source_height": resource.source_height,
+              "img": local_canvas,
+              "original_source_x": resource.source_x,
+              "original_source_y": resource.source_y,
+              "original_source_width": resource.source_width,
+              "original_source_height": resource.source_height,
+              "source_x": dest_x,
+              "source_y": dest_y,
+              "source_width": dest_width,
+              "source_height": dest_height,
             });
+
           }, false);
           img.addEventListener("error", function () {
             console.log("image " + resource.url + " failed to load.");
@@ -1512,18 +1539,13 @@ let EntityManager = (function () {
     clear_entities = function () {
       console.log("clearing all entities yo");
     },
-    get_entities = function (options) {
-      options = options || {};
-      let setup = options.setup;
-
+    get_entities = function () {
+      return entities;
+    },
+    refresh_view = function (options) {
       if (maps.is_loading()) {
         return entities;
       }
-
-      if (!setup && last_updated && (performance.now() - last_updated < 50)) {
-        return entities;
-      }
-      last_updated = performance.now();
 
       let camera = camera_manager.get_camera(),
         x = camera.x-camera.left_margin,
@@ -1545,11 +1567,13 @@ let EntityManager = (function () {
         }
       }
 
-      return et.sort(
+      entities = et.sort(
         function (a, b) {
           return a.layer - b.layer;
         }
       );
+
+      return entities;
     },
     get_texts = function () {
       return texts;
@@ -1604,7 +1628,7 @@ let EntityManager = (function () {
       player.modify_player('layer', current_map.player_layer);
       tree = maps.get_quadtree(current_map);
       layers.splice(current_map.player_layer, 1);
-      entities = get_entities({setup: true});
+      entities = refresh_view();
     },
     move_entity = function (entity, x, y) {
       if (maps.is_loading()) {
@@ -1656,8 +1680,6 @@ let EntityManager = (function () {
       let ei = null,
         ti = null;
 
-      entities = get_entities();
-
       for (ei in entities) {
         if (entities[ei].update) {
           entities[ei].update(delta, manager);
@@ -1696,6 +1718,7 @@ let EntityManager = (function () {
       get_entities: get_entities,
       get_entity: get_entity,
       setup_entities: setup_entities,
+      refresh_view: refresh_view,
       update: update,
       collide: collide,
       move_entity: move_entity,
@@ -1738,14 +1761,26 @@ let AudioManager = (function () {
     },
     play = function (clip_id) {
       let clip = get_clip(clip_id);
+      if (!clip) {
+        console.log("failed to play audio clip: " + clip_id);
+        return;
+      }
       clip.play();
     },
     pause = function (clip_id) {
       let clip = get_clip(clip_id);
+      if (!clip) {
+        console.log("failed to pause audio clip: " + clip_id);
+        return;
+      }
       clip.pause();
     },
     stop = function (clip_id) {
       let clip = get_clip(clip_id);
+      if (!clip) {
+        console.log("failed to stop audio clip: " + clip_id);
+        return;
+      }
       clip.stop();
     },
     volume = function (clip_id, level) {
@@ -1963,10 +1998,260 @@ let AudioManager = (function () {
 })();
 
 
+let DataManager = (function () {
+  let manager = null,
+    data = {},
+
+    get = function (key) {
+      return data[key];
+    },
+    set = function (key, value) {
+      data[key] = value;
+    },
+    json_export = function () {
+      return JSON.stringify(data);
+    },
+    get_store = function () {
+      return data;
+    },
+    set_store = function (store) {
+      data = store;
+    };
+
+  let init = function (_manager) {
+    console.log("DataManager init.");
+    manager = _manager;
+  };
+
+  return function () {
+    return {
+      init: init,
+      get: get,
+      set: set,
+      get_store: get_store,
+      set_store, set_store,
+    };
+  };
+})();
+
+
+let TimeManager = (function () {
+  let manager = null,
+    frame_data = {
+      count: 0,
+      first_time: 0,
+      latest_time: 0,
+      previous_time: 0,
+      elapsed_time: 0,
+      update: function (current_time) {
+        this.count +=1 ;
+        this.previous_time = this.latest_time;
+        this.elapsed_time = this.latest_time - this.first_time;
+      },
+      init: function (current_time) {
+        this.first_time = current_time;
+        this.latest_time = current_time;
+      }
+    },
+    performance_data = {
+      count: 0,
+      first_time: 0,
+      latest_time: 0,
+      previous_time: 0,
+      elapsed_time: 0,
+      update: function () {
+        this.count += 1;
+        this.previous_time = this.latest_time;
+        this.latest_time = performance.now();
+        this.elapsed_time = this.latest_time - this.first_time;
+      },
+      init: function () {
+        this.first_time = performance.now();
+        this.latest_tiem = this.first_time;
+      }
+    },
+    turn_data = {
+      count: 0,
+      update: function () {
+        this.count += 1;
+      },
+      init: function () {
+        // this is a no-op for consistency's sake
+      }
+    },
+    timers = {};
+
+  let get_frame = function () {
+      return frame_data;
+    },
+    get_performance = function () {
+      return performance_data;
+    },
+    get_turns = function () {
+      return turn_data;
+    },
+    tick = function (current_time) {
+      frame_data.update(current_time);
+      performance_data.update();
+      turn_data.update();
+    },
+    start_timer = function (id, target) {
+      let timer = timers[id];
+
+      if (timer && timer.status === "running") {
+        console.log("tried to start an existing timer: " + id);
+      }
+
+      if (timer && (timer.status === "running" || timer.status === "stopped")) {
+        timer.status = "running";
+        timer.start_counts += 1;
+        timer.start_time = performance_data.latest_time;
+
+        return timer;
+      }
+
+      if (timer) {
+        console.log("Invalid timer status in start for timer: " + id);
+        debugger;
+        return;
+      }
+
+      timers[id] = {
+        status: "running",
+        create_time: performance_data.latest_time,
+        start_time: performance_data.latest_time,
+        stop_time: null,
+        target: target,
+        start_count: 1,
+        stop_count: 0,
+        elapsed: function (current_time) {
+          if (this.status === "running") {
+            return current_time - this.start_time;
+          }
+
+          return this.stop_time - this.start_time;
+        },
+        due: function (current_time) {
+          let target_time = this.start_time + this.target;
+
+          if (isNaN(target_time)) {
+            console.log("called 'due' on targetless timer: " + this.id);
+            debugger;
+            return;
+          }
+
+          if (this.status === "running") {
+            return (current_time - target_time) > 0;
+          }
+
+          return (this.stop_time - target_time) > 0;
+        }
+      };
+
+      return timers[id];
+    },
+    stop_timer = function (id) {
+      let timer = timers[id];
+
+      if (!timer) {
+        console.log("attempted to stop nonexistent timer " + id);
+        return;
+      }
+
+      if (timer && timer.status !== "running" && timer.status !== "stopped") {
+        console.log("Invalid timer status in stop for timer: " + id);
+        debugger;
+        return;
+      }
+
+      if (timer && timer.status === "stopped") {
+        console.log("stop called on stopped timer " + id);
+      }
+
+      timer.status = "stopped";
+      timer.stop_count += 1;
+      timer.stop_time = performance_data.latest_time;
+    },
+    timer_elapsed = function (id) {
+      let timer = timers[id];
+
+      if (!timer) {
+        console.log("attempted to check elapsed time of nonexistent timer: " + id);
+        return;
+      }
+
+      if (timer.status !== "running" && timer.status !== "stopped") {
+        console.log("Invalid timer status in elapsed for timer: " + id);
+        debugger;
+        return;
+      }
+
+      return timer.elapsed(performance_data.latest_time);
+    },
+    timer_due = function (id) {
+      let timer = timers[id];
+
+      if (!timer) {
+        console.log("attempted to check elapsed time of nonexistent timer: " + id);
+        return;
+      }
+
+      if (timer.status !== "running" && timer.status !== "stopped") {
+        console.log("Invalid timer status in 'due' for timer: " + id);
+        debugger;
+        return;
+      }
+
+      return timer.due(performance_data.latest_time);
+    },
+    destroy_timer = function (id) {
+      let timer = timers[id];
+
+      if (!timer) {
+        console.log("attempted to destroy non-existent timer.");
+        debugger;
+        return;
+      }
+
+      timer.status = "destroyed";
+      delete timers[id];
+
+      return timer;
+    },
+    get_timer = function (id) {
+      return timers[id];
+    };
+
+  let init = function (_manager) {
+    console.log("TimeManager init.");
+    manager = _manager;
+    turn_data.init();
+    performance_data.init();
+    // frame data is initialized by the renderer lead-in
+  };
+
+  return function () {
+    return {
+      init: init,
+      get_frame: get_frame,
+      get_performance: get_performance,
+      get_turns: get_turns,
+      tick: tick,
+      start_timer: start_timer,
+      stop_timer: stop_timer,
+      timer_elapsed: timer_elapsed,
+      timer_due: timer_due,
+      destroy_timer: destroy_timer,
+      get_timer: get_timer
+    };
+  };
+})();
+
 
 let RenderManager = (function () {
   let manager = null,
     context_manager = null,
+    time_manager = null,
     frames_per_second = null,
     last_time = performance.now(),
     current_time = performance.now(),
@@ -1977,14 +2262,21 @@ let RenderManager = (function () {
     draw = function (tile, context, delta, offset) {
       let resource = resources.get_image(tile.img),
         source_x = 0, source_y = 0, source_width = 0, source_height = 0,
-        x_pos = 0, y_pos = 0,
+        dest_x = 0, dest_y = 0, dest_width = 0, dest_height = 0,
         saved_style = null;
 
-      x_pos = tile.x - offset.x;
-      y_pos = tile.y - offset.y
+      dest_x = tile.x - offset.x;
+      dest_y = tile.y - offset.y
+      if (!tile.x_size) {
+        console.log(tile.img);
+      }
+
+      dest_width = tile.x_size;
+      dest_height = tile.y_size;
+
       if (tile.offset_type === "camera") {
-        x_pos = tile.ui_x;
-        y_pos = tile.ui_y;
+        dest_x = tile.ui_x;
+        dest_y = tile.ui_y;
       }
 
       if (resource && tile.active !== false) {
@@ -1992,24 +2284,36 @@ let RenderManager = (function () {
         source_y = tile.source_y || resource.source_y;
         source_width = tile.source_width || resource.source_width;
         source_height = tile.source_height || resource.source_height;
+        dest_width = dest_width || tile.x_scale * resource.source_width;
+        dest_height = dest_height || tile.y_scale * resource.source_height;
 
-        context.drawImage(
-          resource.img,
-          source_x, source_y,
-          source_width, source_height,
-          x_pos, y_pos,
-          tile.x_scale * source_width,
-          tile.y_scale * source_height
-        );
+        if (dest_width === resource.source_width &&
+          dest_height === resource.source_height &&
+          source_x === 0 &&
+          source_y === 0
+        ) {
+          context.drawImage(
+            resource.img,
+            dest_x, dest_y
+          );
+        } else {
+          context.drawImage(
+            resource.img,
+            source_x, source_y,
+            source_width, source_height,
+            dest_x, dest_y,
+            dest_width, dest_height
+          );
+        }
       } else if (tile.render_type === "fillRect") {
         saved_style = context.fillStyle;
         context.fillStyle = tile.img;
-        context.fillRect(x_pos, y_pos, tile.x_size, tile.y_size);
+        context.fillRect(dest_x, dest_y, dest_width, dest_height);
         context.fillStyle = saved_style;
       } else if (tile.render_type === "strokeRect") {
         saved_style = context.strokeStyle;
         context.strokeStyle = tile.img;
-        context.strokeRect(x_pos, y_pos, tile.x_size, tile.y_size);
+        context.strokeRect(dest_x, dest_y, dest_width, dest_height);
         context.strokeStyle = saved_style;
       }
     },
@@ -2026,12 +2330,25 @@ let RenderManager = (function () {
       context.font = text.font;
       context.fillText(text.text, x, y);
     },
-    next_frame = function () {
+    lead_in = function (current_time) {
+      manager.get('time').get_frame().init(current_time);
+      requestAnimationFrame(next_frame);
+    },
+    next_frame = function (frame_time) {
+      time_manager.tick(frame_time);
+      let current_turn = time_manager.get_turns().count;
+      if (manager.get('data').get('active_turn') !== manager.get('data').get('turn_ended')) {
+        console.log("canceling frame " + current_turn);
+      }
+      manager.get('data').set('active_turn', current_turn);
+
       current_time = performance.now();
       let delta = ((current_time - last_time)/1000) * frames_per_second;
       let di = null,
         ti = null;
       last_time = current_time;
+
+      entities.refresh_view();
 
       let world_offset = manager.get('camera').get_offset(),
         draw_list = entities.get_entities(),
@@ -2048,11 +2365,13 @@ let RenderManager = (function () {
       entities.load_if_needed();
 
       requestAnimationFrame(next_frame);
+      manager.get('data').set('turn_ended', current_turn);
     },
     init = function (_manager) {
       console.log("RenderManager init.");
       manager = _manager;
       frames_per_second = manager.get('config').get_config()['frames_per_second'];
+      time_manager = manager.get('time');
       context_manager = manager.get('context');
       resources = manager.get('resource');
       entities = manager.get('entity');
@@ -2062,6 +2381,7 @@ let RenderManager = (function () {
     return {
       init: init,
       next_frame: next_frame,
+      lead_in: lead_in,
     };
   };
 })();
