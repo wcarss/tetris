@@ -170,7 +170,7 @@ let config_spec = {
           audio_manager.play("menu_beep");
         }
 
-        if (performance.now() - last_pause_call > 150 && (controls.buttons('start_game') || controls.keys('Enter'))) {
+        if (performance.now() - last_pause_call > 500 && (controls.buttons('start_game') || controls.keys('Enter'))) {
           rows = [
             null, null, null, null, null, null,
             null, null, null, null, null, null,
@@ -475,6 +475,19 @@ let config_spec = {
           this.y_velocity = this.base_drop_speed + this.drop_speed_mod;
         }
 
+        if ((controls.mouse() &&
+            (!this.last_click || (controls.get_mouse().down_at > this.last_click))) &&
+            Math.abs(controls.mouse_coords().x - this.x) < 26 &&
+            controls.mouse_coords().y < this.y - 32
+        ) {
+          if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
+            rotated = true;
+            this.last_rotated = performance.now();
+          }
+          console.log("distance from x: " + (controls.mouse_coords().x-this.x));
+          this.last_click = controls.get_mouse().down_at;
+        }
+
         if (controls.keys('KeyA') || controls.keys('ArrowLeft')) {
           this.x_velocity = -32;
         } else if (controls.keys('KeyD') || controls.keys('ArrowRight')) {
@@ -482,6 +495,28 @@ let config_spec = {
         } else {
           this.x_velocity = 0;
         }
+
+        if (controls.mouse() && !rotated) {
+          let tcoords = controls.mouse_coords();
+          let screen_x_size = manager.get('context').get_width();
+          let screen_y_size = manager.get('context').get_height();
+
+          if (tcoords.x < this.x - 26) {
+            this.x_velocity = -32;
+          } else if (tcoords.x > this.x + 26) {
+            this.x_velocity = 32;
+          } else {
+            this.x_velocity = 0;
+          }
+
+          if (tcoords.y > screen_y_size * 2 / 3 &&
+            Math.abs(controls.mouse_coords().x - this.x) < 26
+) {
+             this.y_velocity = 10;
+          } else {
+             this.y_velocity = this.base_drop_speed + this.drop_speed_mod;
+          }
+       }
 
         if (!this.last_moved || (performance.now() - this.last_moved) > 80) {
           this.x += this.x_velocity;
@@ -571,14 +606,15 @@ let config_spec = {
       "layers": [
         [
           {
-            "id": "bg1",
-            "img": "background_blue",
-            "x": -3200,
-            "y": -3200,
-            "x_scale": 300,
-            "y_scale": 300,
-            "x_size": 6400,
-            "y_size": 6400,
+            "id": "background",
+            "img": "white",
+            "render_type": "fillRect",
+            "x": 0,
+            "y": 0,
+            "x_scale": 1,
+            "y_scale": 1,
+            "x_size": 600,
+            "y_size": 600,
             "layer": -1,
           }
         ],
