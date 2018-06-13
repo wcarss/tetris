@@ -26,6 +26,7 @@ let GameManager = (function () {
         request: RequestManager(),
         resource: ResourceManager(),
         script: ScriptManager(),
+        controller: ControllerManager(),
         ui: UIManager(),
         data: DataManager(),
         time: TimeManager()
@@ -399,82 +400,180 @@ let RequestManager = (function () {
 
 let ContextManager = (function () {
   let manager = null,
-    context = null,
-    canvas = null,
+    defined = {
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0,
+    },
+    canvases = {
+    },
     fullscreen = false,
-    width = 0,
-    height = 0,
-    canvas_id = "",
-    stage_id = "",
-    get_context = function () {
-      return context;
+    get_context = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].context;
     },
-    get_canvas = function () {
-      return canvas;
+    get_canvas = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].canvas;
     },
-    get_width = function () {
-      return width;
+    get_width = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].width;
     },
-    get_height = function () {
-      return height;
+    get_height = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].height;
     },
-    set_context = function (new_context) {
-      context = new_context;
-      return context;
+    get_top = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].top;
     },
-    set_canvas = function (new_canvas) {
-      canvas = new_canvas;
-      context = canvas.getContext("2d");
-      return canvas;
+    get_left = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].left;
     },
-    resize = function (event, x_size, y_size) {
-      width = x_size || max_width();
-      height = y_size || max_height();
-      canvas.width = width;
-      canvas.height = height;
-      set_canvas(canvas);
+    get_z_index = function (id) {
+      if (!id) {
+        id = "main";
+      }
+
+      return canvases[id].z_index;
+    },
+    set_context = function (id, new_context) {
+      if (!id) {
+        id = "main";
+      }
+
+      if (!new_context) {
+        new_context = canvases[id].canvas.getContext("2d");
+      }
+
+      canvases[id].context = new_context;
+      return canvases[id].context;
+    },
+    set_canvas = function (id, new_canvas) {
+      if (!id) {
+        id = "main";
+      }
+      canvases[id].canvas = new_canvas;
+      canvases[id].context = canvases[id].canvas.getContext("2d");
+      return canvases[id].canvas;
+    },
+    resize = function (event, left, top, x_size, y_size) {
+      top = top || 0;
+      left = left || 0;
+      let width = x_size || max_width()-left;
+      let height = y_size || max_height()-top;
+      let index = null;
+      let canvas = null;
+
+      for (index in canvases) {
+        canvas = canvases[index];
+        canvas.canvas.width = width;
+        canvas.canvas.height = height;
+        canvas.canvas.style.top = top + "px";
+        canvas.canvas.style.left = left + "px";
+        canvas.width = width;
+        canvas.height = height;
+        canvas.top = top;
+        canvas.left = left;
+        set_context(canvas.id);
+      }
     },
     make_fullscreen = function () {
       window.addEventListener("resize", resize);
     },
     stop_fullscreen = function () {
       window.removeEventListener("resize", resize);
-      resize(null, width, height);
+      resize(null, 0, 0, width, height);
     },
     max_height = function () {
-      return document.body.clientHeight;
+      return window.innerHeight;
     },
     max_width = function () {
-      return document.body.clientWidth;
+      return window.innerWidth;
+    },
+    get_defined = function () {
+      return defined;
     },
     init = function (_manager) {
       console.log("ContextManager init.");
       manager = _manager;
       let config = manager.get('config').get_config();
+      let canvas_list = config.canvas_list || ["main", "ui"];
+      let canvas_name = null;
+      let canvas = null;
+      let stage_id = config.stage_id || "stage";
       let stage = null;
-
-      canvas_id = config.canvas_id || "canvas";
-      stage_id = config.stage_id || "stage";
-      width = config.width || max_width();
-      height = config.height || max_height();
-      fullscreen = config.fullscreen || false;
-
-      stage = document.getElementById("stage");
-      canvas = document.createElement("canvas");
+      let index = null;
+      let z_index = 10;
 
       document.body.style.overflow = "hidden";
+      stage = document.getElementById(stage_id);
       stage.style.overflow = "hidden";
-      canvas.style.overflow = "hidden";
-      canvas.id = canvas_id;
-      canvas.style.display = "block";
 
-      stage.appendChild(canvas);
-      resize(null, width, height);
+      defined.left = config.offset_x || 0;
+      defined.top = config.offset_y || 0;
+      defined.width = max_width();
+      defined.height = max_height();
+
+      for (index in canvas_list) {
+        canvas_name = canvas_list[index];
+        canvases[canvas_name] = {
+          id: config["canvas_" + canvas_name + "_id"] || canvas_name,
+          canvas: document.createElement("canvas"),
+          context: null,
+          left: defined.left,
+          top: defined.top,
+          width: defined.width,
+          height: defined.height,
+          z_index: config["canvas_" + canvas_name + "_z_index"] || z_index,
+        }
+
+        z_index += 10;
+
+        canvas = canvases[canvas_name].canvas;
+        canvas.id = "canvas-" + canvases[canvas_name].id;
+        canvas.style.display = "block";
+        canvas.style.overflow = "hidden";
+        canvas.style.position = "absolute";
+        canvas.style.left = canvases[canvas_name].left;
+        canvas.style.top = canvases[canvas_name].top;
+        canvas.style['z-index'] = canvases[canvas_name].z_index
+        stage.appendChild(canvas);
+      }
+
+      fullscreen = config.fullscreen || false;
       if (fullscreen === true) {
         make_fullscreen();
       }
 
-      set_canvas(canvas);
+      resize(
+        null,
+        canvases["main"].left,
+        canvases["main"].top,
+        canvases["main"].width,
+        canvases["main"].height
+      );
     };
 
   return function () {
@@ -486,6 +585,12 @@ let ContextManager = (function () {
       set_canvas: set_canvas,
       get_width: get_width,
       get_height: get_height,
+      max_width: max_width,
+      max_height: max_height,
+      get_top: get_top,
+      get_left: get_left,
+      get_z_index: get_z_index,
+      get_defined: get_defined,
       resize: resize,
     };
   };
@@ -836,9 +941,6 @@ let ControlManager = (function () {
     buttons = function (id) {
       return controls.buttons[id] && controls.buttons[id].down;
     },
-    get_mouse = function () {
-      return controls.mouse;
-    },
     mouse = function () {
       return controls.mouse.down;
     },
@@ -905,7 +1007,7 @@ let ControlManager = (function () {
         }
       });
 
-      window.addEventListener("pointerdown", function (e) {
+      window.addEventListener("mousedown", function (e) {
         controls.mouse.down_event = e;
         controls.mouse.x = e.x;
         controls.mouse.y = e.y;
@@ -913,7 +1015,7 @@ let ControlManager = (function () {
         controls.mouse.down_at = performance.now();
       });
 
-      window.addEventListener("pointerup", function (e) {
+      window.addEventListener("mouseup", function (e) {
         delete controls.mouse.down_event;
         controls.mouse.down = false;
         controls.mouse.up_at = performance.now();
@@ -924,7 +1026,7 @@ let ControlManager = (function () {
         }
       });
 
-      window.addEventListener("pointermove", function (e) {
+      window.addEventListener("mousemove", function (e) {
         controls.mouse.move_event = e;
         controls.mouse.x = e.x;
         controls.mouse.y = e.y;
@@ -944,13 +1046,491 @@ let ControlManager = (function () {
       set_button: set_button,
       keys: keys,
       buttons: buttons,
-      get_mouse: get_mouse,
       mouse: mouse,
       mouse_coords: mouse_coords,
     };
   };
 })();
 
+
+let ControllerManager = (function () {
+  let manager = null,
+    controllers = function (id) {
+      let context = manager.get('context');
+      let height = context.max_height();
+      let width = context.max_width();
+
+      return {
+        'nes-mobile-landscape': {
+          'id': 'nes-mobile-landscape',
+          'dimensions': {
+            x: 160,
+            y: 0,
+            right: -160,
+            bottom: 0,
+          },
+          'components': {
+            'backer_left': {
+              id: "backer_left",
+              x: 0,
+              y: 0,
+              width: "160px",
+              height: height + "px",
+              text: "",
+              z_offset: -5,
+              background: "black", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'backer_right': {
+              id: "backer_right",
+              x: (width-160) + "px",
+              y: 0,
+              width: "160px",
+              height: height + "px",
+              text: "",
+              z_offset: -5,
+              background: "black", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_top_left': {
+              id: "d_pad_top_left",
+              x: "20px",
+              y: "160px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_top': {
+              id: "d_pad_top",
+              x: "60px",
+              y: "160px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_top_right': {
+              id: "d_pad_top_right",
+              x: "100px",
+              y: "160px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "gray", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_left': {
+              id: "d_pad_left",
+              x: "20px",
+              y: "200px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_center': {
+              id: "d_pad_center",
+              x: "60px",
+              y: "200px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_right': {
+              id: "d_pad_right",
+              x: "100px",
+              y: "200px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_bottom_left': {
+              id: "d_pad_bottom_left",
+              x: "20px",
+              y: "240px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_bottom': {
+              id: "d_pad_bottom",
+              x: "60px",
+              y: "240px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_bottom_right': {
+              id: "d_pad_bottom_right",
+              x: "100px",
+              y: "240px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'b_button': {
+              id: "b_button",
+              x: (width-150) + "px",
+              y: "210px",
+              width: "60px",
+              height: "60px",
+              text: "&nbsp;B",
+              background: "red", // (optional) background for button
+              style: "font: 48px arial; color: white;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'a_button': {
+              id: "a_button",
+              x: (width-80) + "px",
+              y: "170px",
+              width: "60px",
+              height: "60px",
+              text: "&nbsp;A",
+              background: "red", // (optional) background for button
+              style: "font: 48px arial; color: white;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'select': {
+              id: "select_button",
+              x: "40px",
+              y: "50px",
+              width: "80px",
+              height: "20px",
+              text: "&nbsp;&nbsp;SELECT",
+              background: "gray", // (optional) background for button
+              style: "font-family: Arial; color: white; padding-top: 4px;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'start': {
+              id: "start_button",
+              x: (width-120)+"px",
+              y: "50px",
+              width: "80px",
+              height: "20px",
+              text: "&nbsp;&nbsp;&nbsp;START",
+              background: "gray", // (optional) background for button
+              style: "font-family: Arial; color: white; padding-top: 4px;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+          }
+        },
+        'nes-mobile-portrait': {
+          'id': 'nes-mobile-portrait',
+          'dimensions': {
+            x: 0,
+            y: 0,
+            right: 0,
+            bottom: -160,
+          },
+          'components': {
+            'backer_bottom': {
+              id: "backer_bottom",
+              x: 0,
+              y: (height-160) + "px",
+              width: width + "px",
+              height: "160px",
+              text: "",
+              z_offset: -5,
+              background: "black", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_top_left': {
+              id: "d_pad_top_left",
+              x: "20px",
+              y: (height-140) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_top': {
+              id: "d_pad_top",
+              x: "60px",
+              y: (height-140) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_top_right': {
+              id: "d_pad_top_right",
+              x: "100px",
+              y: (height - 140) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_left': {
+              id: "d_pad_left",
+              x: "20px",
+              y: (height - 100) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_center': {
+              id: "d_pad_center",
+              x: "60px",
+              y: (height - 100) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_right': {
+              id: "d_pad_right",
+              x: "100px",
+              y: (height - 100) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_bottom_left': {
+              id: "d_pad_bottom_left",
+              x: "20px",
+              y: (height - 60) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_bottom': {
+              id: "d_pad_bottom",
+              x: "60px",
+              y: (height - 60) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "red", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'd_pad_bottom_right': {
+              id: "d_pad_bottom_right",
+              x: "100px",
+              y: (height - 60) + "px",
+              width: "40px",
+              height: "40px",
+              text: "",
+              background: "grey", // (optional) background for button
+              style: null, // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'b_button': {
+              id: "b_button",
+              x: "220px",
+              y: (height - 90) + "px",
+              width: "60px",
+              height: "60px",
+              text: "&nbsp;B ",
+              background: "red", // (optional) background for button
+              style: "font: 48px arial; color: white;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'a_button': {
+              id: "a_button",
+              x: "290px",
+              y: (height - 130) + "px",
+              width: "60px",
+              height: "60px",
+              text: "&nbsp;A",
+              background: "red", // (optional) background for button
+              style: "font: 48px arial; color: white;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'select': {
+              id: "select_button",
+              x: "150px",
+              y: (height - 110) + "px",
+              width: "60px",
+              height: "20px",
+              text: "&nbsp;SELECT",
+              background: "grey", // (optional) background for button
+              style: "font: 13px Arial; font-weight: bold; color: white; padding-top: 4.5px;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+            'start': {
+              id: "start_button",
+              x: "150px",
+              y: (height - 65) + "px",
+              width: "60px",
+              height: "20px",
+              text: "&nbsp;&nbsp;START",
+              background: "grey", // (optional) background for button
+              // old style: "font-family: Arial; color: white; padding-top: 4px;", // (optional) custom-style
+              style: "font: 13px Arial; font-weight: bold; color: white; padding-top: 4.5px;", // (optional) custom-style
+              update: null, // (optional) update-function taking manager
+            },
+          }
+        },
+      }[id];
+    },
+    active = {};
+
+  let clear_controller = function () {
+      let index = null,
+        ui = manager.get('ui'),
+        other_buttons = null,
+        button = null,
+        dimensions = null,
+        context = manager.get('context'),
+        camera = manager.get('camera'),
+        defined = context.get_defined();
+
+      if (Object.keys(active).length === 0) {
+        return;
+      }
+
+      for (index in active.buttons) {
+        ui.remove_button(active.buttons[index].id);
+      }
+
+      dimensions = controllers(active.id).dimensions;
+
+      other_buttons = ui.get_buttons();
+      for (index in other_buttons) {
+        button = other_buttons[index];
+
+        ui.set_button_position(
+          button.id,
+          parseInt(button.x) - controllers(active.id).dimensions.x,
+          parseInt(button.y) - controllers(active.id).dimensions.y
+        );
+      }
+
+      context.resize(
+        null, // deprectated slot for event object
+        defined.left,
+        defined.top,
+        context.max_width()-defined.left,
+        context.max_height()-defined.top,
+      );
+      camera.resize(
+        context.get_width(),
+        context.get_height()
+      );
+
+      active = {};
+    },
+    activate_controller = function (controller) {
+      let ui = manager.get('ui'),
+        component = null,
+        index = null;
+
+      active.buttons = {};
+      for (index in controller.components) {
+        component = controller.components[index];
+        active.buttons[component.id] = component;
+        ui.add_button(component);
+      }
+      active.id = controller.id;
+    },
+    change_to_controller = function (id) {
+      let context = manager.get('context');
+      let camera = manager.get('camera');
+      let ui = manager.get('ui');
+      let other_buttons = null;
+      let dimensions = null;
+      let index = null;
+      let button = null;
+
+      if (!controllers(id)) {
+        return;
+      }
+
+      clear_controller();
+      activate_controller(controllers(id));
+
+      dimensions = controllers(id).dimensions;
+      context.resize(
+        null, // deprectated slot for event object
+        context.get_left() + dimensions.x,
+        context.get_top() + dimensions.y,
+        (context.max_width() + dimensions.right) - (context.get_left() + dimensions.x),
+        (context.max_height() + dimensions.bottom) - (context.get_top() + dimensions.y)
+      );
+      camera.resize(
+        context.get_width(),
+        context.get_height()
+      );
+
+      other_buttons = ui.get_buttons();
+      for (index in other_buttons) {
+        button = other_buttons[index];
+        if (!active.buttons[index]) {
+          ui.set_button_position(
+            button.id,
+            parseInt(button.x) + dimensions.x,
+            parseInt(button.y) + dimensions.y
+          );
+        }
+      }
+    },
+    get_active = function () {
+      return active;
+    },
+    get_controller = function (id) {
+      return controllers(id);
+    };
+
+  let init = function (_manager) {
+    manager = _manager;
+  };
+
+  return function () {
+    return {
+      init: init,
+      change_to_controller: change_to_controller,
+      activate_controller: activate_controller,
+      clear_controller: clear_controller,
+      get_active: get_active,
+      get_controller: get_controller,
+    };
+  };
+})();
 
 
 let UIManager = (function () {
@@ -968,17 +1548,35 @@ let UIManager = (function () {
        *
        *   background: (optional) background for button
        *   style: (optional) custom-style
-       *   update: (optional) update-function taking manager manager
+       *   update: (optional) update-function taking manager
        * }
        */
 
       let element = document.createElement("div");
       let style_string = "position: absolute; display: inline-block; ";
-      style_string += "left: " + button.x + "px; ";
-      style_string += "top: " + button.y + "px; ";
-      style_string += "width: " + button.width + "px; ";
-      style_string += "height: " + button.height + "px; ";
+      let z_index = manager.get('context').get_z_index('ui') + 10;
+      let top = manager.get('context').get_top();
+      let left = manager.get('context').get_left();
+      let controller = manager.get('controller');
+      if (controller.get_active().id) {
+        if (!controller.get_active().buttons[button.id]) {
+          button.x = parseInt(button.x) + left;
+          button.y = parseInt(button.y) + top;
+        }
+      }
+      let controller_button = manager.get('controller').get_active()
+
+      if (button.z_offset) {
+        z_index += button.z_offset;
+      }
+
+      style_string += "left: " + parseInt(button.x) + "px; ";
+      style_string += "top: " + parseInt(button.y) + "px; ";
+      style_string += "width: " + parseInt(button.width) + "px; ";
+      style_string += "height: " + parseInt(button.height) + "px; ";
       style_string += "background: " + button.background + "; ";
+      style_string += "z-index: " + z_index + "; ";
+
       if (button.style) {
         style_string += button.style;
       }
@@ -992,22 +1590,28 @@ let UIManager = (function () {
       button.hover_at = 0;
       button.down_at = 0;
 
-      button.on_enter = function () {
+      button.on_enter = function (event) {
         control_manager.set_button(button.id, 'hover', true);
       };
-      button.on_out = function () {
+      button.on_out = function (event) {
         control_manager.set_button(button.id, 'hover', false);
       };
-      button.on_down = function () {
+      button.on_down = function (event) {
         control_manager.set_button(button.id, 'down', true);
+        button.element.setPointerCapture(event.pointerId);
       };
-      button.on_up = function () {
+      button.on_cancel = function (event) {
+        control_manager.set_button(button.id, 'down', false);
+        button.element.releasePointerCapture(event.pointerId);
+      };
+      button.on_up = function (event) {
         control_manager.set_button(button.id, 'down', false);
       };
 
-      element.addEventListener('pointereenter', button.on_enter);
+      element.addEventListener('pointerenter', button.on_enter);
       element.addEventListener('pointerout', button.on_out);
       element.addEventListener('pointerdown', button.on_down);
+      element.addEventListener('pointercancel', button.on_cancel);
       element.addEventListener('pointerup', button.on_up);
 
       let stage = document.getElementById("stage");
@@ -1029,10 +1633,12 @@ let UIManager = (function () {
       element.removeEventListener('pointerenter', button.on_enter);
       element.removeEventListener('pointerout', button.on_out);
       element.removeEventListener('pointerdown', button.on_down);
+      element.removeEventListener('pointercancel', button.on_cancel);
       element.removeEventListener('pointerup', button.on_up);
 
       let stage = document.getElementById("stage");
       stage.removeChild(element);
+      delete buttons[id];
 
       return button;
     },
@@ -1059,6 +1665,25 @@ let UIManager = (function () {
         button.on_state_change(manager, state);
       }
     },
+    set_button_position = function (id, x, y) {
+      let button = buttons[id];
+
+      if (!button) {
+        return null;
+      }
+
+      if (typeof x !== "string") {
+        x += "px";
+      }
+      if (typeof y !== "string") {
+        y += "px";
+      }
+
+      button.x = x;
+      button.y = y;
+      button.element.style.left = x;
+      button.element.style.top = y;
+    },
     get_buttons = function () {
       return buttons;
     },
@@ -1077,6 +1702,7 @@ let UIManager = (function () {
       remove_button: remove_button,
       set_button_text: set_button_text,
       set_button_state: set_button_state,
+      set_button_position: set_button_position,
     };
   };
 })();
@@ -1129,6 +1755,7 @@ let MapManager = (function () {
 
       // actually change the map
       current_map_id = map_id;
+      manager.get('render').clear_all();
       manager.get('entity').setup_entities();
 
       // setup actions in new map (if any)
@@ -1665,6 +2292,8 @@ let EntityManager = (function () {
       if (to_remove !== -1) {
         texts.splice(to_remove, 1);
       }
+
+      manager.get('render').clear_context("ui");
     },
     collide = function (entity) {
       let collisions = [],
@@ -2263,6 +2892,17 @@ let RenderManager = (function () {
     resources = null,
     stored_count = null,
 
+    clear_context = function (id) {
+      let context = context_manager.get_context(id),
+        width = context_manager.get_width(id),
+        height = context_manager.get_height(id);
+
+      context.clearRect(0, 0, width, height);
+    },
+    clear_all = function () {
+      clear_context("main");
+      clear_context("ui");
+    },
     draw = function (tile, context, delta, offset) {
       let resource = resources.get_image(tile.img),
         source_x = 0, source_y = 0, source_width = 0, source_height = 0,
@@ -2323,7 +2963,13 @@ let RenderManager = (function () {
     },
     text_draw = function (text, context, delta, offset) {
       let x = text.x,
-        y = text.y;
+        y = text.y,
+        last_width = text.last_width || 0,
+        last_height = text.last_height || 0;
+
+      context.font = text.font;
+      text.last_width = context.measureText(text.text).width;
+      text.last_height = context.measureText("m").width;
 
       if (text.offset_type !== "camera") {
         x = x - offset.x;
@@ -2332,6 +2978,8 @@ let RenderManager = (function () {
 
       context.fillStyle = text.color;
       context.font = text.font;
+      // todo: dear measure text: how can you be so wrong
+      context.clearRect(x-14, y-14, last_width+20, last_height+10);
       context.fillText(text.text, x, y);
     },
     lead_in = function (current_time) {
@@ -2357,13 +3005,14 @@ let RenderManager = (function () {
       let world_offset = manager.get('camera').get_offset(),
         draw_list = entities.get_entities(),
         text_list = entities.get_texts(),
-        context = context_manager.get_context();
+        main_context = context_manager.get_context("main"),
+        text_context = context_manager.get_context("ui");
 
       for (di in draw_list) {
-        draw(draw_list[di], context, delta, world_offset);
+        draw(draw_list[di], main_context, delta, world_offset);
       }
       for (ti in text_list) {
-        text_draw(text_list[ti], context, delta, world_offset);
+        text_draw(text_list[ti], text_context, delta, world_offset);
       }
       entities.update(delta, manager);
       entities.load_if_needed();
@@ -2386,6 +3035,8 @@ let RenderManager = (function () {
       init: init,
       next_frame: next_frame,
       lead_in: lead_in,
+      clear_context: clear_context,
+      clear_all: clear_all,
     };
   };
 })();
