@@ -6,6 +6,36 @@ let config_spec = {
       this.manager = _manager;
       this.player = _manager.get('player').get_player();
       _manager.get('map').change_maps("intro");
+
+      let setup_controls = function (event) {
+        let ctx = _manager.get('context');
+        let ctr = _manager.get('controller');
+
+        if (navigator.maxTouchPoints !== 0) {
+          if ((ctx.max_width() > ctx.max_height()) || window.orientation === 90 || window.orientation === -90) {
+            ctr.change_to_controller('nes-mobile-landscape');
+          } else {
+            ctr.change_to_controller('nes-mobile-portrait');
+          }
+        } else if (ctr.get_active().id) {
+          ctr.change_to_controller(ctr.get_active().id);
+        }
+      };
+
+      window.addEventListener('resize', function () {
+        console.log("calling resize in response to resize event");
+        _manager.get('context').resize();
+        setup_controls();
+      });
+      window.addEventListener('deviceorientation', function () {
+        if (this.last_width !== _manager.get('context').max_width()) {
+          this.last_width = _manager.get('context').max_width();
+          _manager.get('context').resize();
+          setup_controls();
+        }
+      });
+      setup_controls();
+
     },
     "post_resource_load": function (manager) {
       generate_level_resources(manager);
@@ -35,7 +65,7 @@ let config_spec = {
       }
 
       let map_id = map_manager.get_current_map_id();
-      if ((controls.keys('KeyP') || controls.keys('Enter') || controls.keys('Escape')) && map_id !== "intro" && map_id !== "setup" && map_id !== "menu") {
+      if ((controls.keys('KeyP') || controls.keys('Enter') || controls.keys('Escape') || controls.buttons('start_button')) && map_id !== "intro" && map_id !== "setup" && map_id !== "menu") {
         if ((performance.now() - last_pause_call) > 250) {
           last_pause_call = performance.now();
           if (paused) {
@@ -97,7 +127,7 @@ let config_spec = {
       }
 
       if (map_manager.get_current_map_id() === "intro") {
-        if (controls.buttons('start_game') || controls.keys('Enter')) {
+        if (controls.buttons('start_game') || controls.keys('Enter') || controls.buttons('start_button')) {
           map_manager.change_maps("setup");
           audio_manager.play("selection");
           last_pause_call = performance.now();
@@ -170,7 +200,7 @@ let config_spec = {
           audio_manager.play("menu_beep");
         }
 
-        if (performance.now() - last_pause_call > 500 && (controls.buttons('start_game') || controls.keys('Enter'))) {
+        if (performance.now() - last_pause_call > 500 && (controls.buttons('start_game') || controls.keys('Enter') || controls.buttons('start_button'))) {
           rows = [
             null, null, null, null, null, null,
             null, null, null, null, null, null,
@@ -457,6 +487,8 @@ let config_spec = {
         audio_manager = manager.get('audio'),
         entity_manager = manager.get('entity'),
         rotated = null,
+        rotation_amount = 90,
+        a_button_rotation = false,
         collision = null;
 
       if (map_manager.get_current_map_id() === "intro" || this.paused) {
@@ -464,59 +496,31 @@ let config_spec = {
         this.last_x = this.x;
         this.last_y = this.y;
 
-        if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space')) {
+        if (controls.keys('KeyW') || controls.keys('ArrowUp') || controls.keys('Space') || controls.buttons('d_pad_top') || controls.buttons('d_pad_top_left') || controls.buttons('d_pad_top_right') || controls.buttons('a_button') || controls.buttons('b_button')) {
           if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
+            if (controls.buttons('a_button')) {
+              a_button_rotation = true;
+              console.log("noted a button");
+            }
+            if (controls.buttons('b_button')) {
+              console.log("noted b button");
+            }
             rotated = true;
             this.last_rotated = performance.now();
           }
-        } else if (controls.keys('KeyS') || controls.keys('ArrowDown')) {
+        } else if (controls.keys('KeyS') || controls.keys('ArrowDown') || controls.buttons('d_pad_bottom') || controls.buttons('d_pad_bottom_left') || controls.buttons('d_pad_bottom_right')) {
           this.y_velocity = 10;
         } else {
           this.y_velocity = this.base_drop_speed + this.drop_speed_mod;
         }
 
-        if ((controls.mouse() &&
-            (!this.last_click || (controls.get_mouse().down_at > this.last_click))) &&
-            Math.abs(controls.mouse_coords().x - this.x) < 26 &&
-            controls.mouse_coords().y < this.y - 32
-        ) {
-          if (!this.last_rotated || (performance.now() - this.last_rotated) > 150 && this.shape) {
-            rotated = true;
-            this.last_rotated = performance.now();
-          }
-          console.log("distance from x: " + (controls.mouse_coords().x-this.x));
-          this.last_click = controls.get_mouse().down_at;
-        }
-
-        if (controls.keys('KeyA') || controls.keys('ArrowLeft')) {
+        if (controls.keys('KeyA') || controls.keys('ArrowLeft') || controls.buttons('d_pad_left') || controls.buttons('d_pad_top_left') || controls.buttons('d_pad_bottom_left')) {
           this.x_velocity = -32;
-        } else if (controls.keys('KeyD') || controls.keys('ArrowRight')) {
+        } else if (controls.keys('KeyD') || controls.keys('ArrowRight') || controls.buttons('d_pad_right') || controls.buttons('d_pad_top_right') || controls.buttons('d_pad_bottom_right')) {
           this.x_velocity = 32;
         } else {
           this.x_velocity = 0;
         }
-
-        if (controls.mouse() && !rotated) {
-          let tcoords = controls.mouse_coords();
-          let screen_x_size = manager.get('context').get_width();
-          let screen_y_size = manager.get('context').get_height();
-
-          if (tcoords.x < this.x - 26) {
-            this.x_velocity = -32;
-          } else if (tcoords.x > this.x + 26) {
-            this.x_velocity = 32;
-          } else {
-            this.x_velocity = 0;
-          }
-
-          if (tcoords.y > screen_y_size * 2 / 3 &&
-            Math.abs(controls.mouse_coords().x - this.x) < 26
-) {
-             this.y_velocity = 10;
-          } else {
-             this.y_velocity = this.base_drop_speed + this.drop_speed_mod;
-          }
-       }
 
         if (!this.last_moved || (performance.now() - this.last_moved) > 80) {
           this.x += this.x_velocity;
@@ -531,7 +535,10 @@ let config_spec = {
         if (this.shape && (this.shape.state === "falling" || this.shape.state === "sliding")) {
           this.shape.save_location();
           if (rotated) {
-            this.shape.rotate(90);
+            if (a_button_rotation) {
+              rotation_amount *= -1;
+            }
+            this.shape.rotate(rotation_amount);
             audio_manager.play("block_rotate");
           }
 
@@ -540,7 +547,7 @@ let config_spec = {
           collision = this.shape.collide(manager);
           if (collision) {
             if (rotated) {
-              rotate_shape(this.shape, -90);
+              rotate_shape(this.shape, -rotation_amount);
             }
 
             if (collision.x) {
@@ -690,7 +697,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "length_fast",
           x: 95,
-          y: 290-50,
+          y: (290-50),
           width: 240,
           height: 20,
           text: 'fast:&nbsp;&nbsp;&nbsp;2&nbsp;rows / level',
@@ -709,7 +716,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "length_standard",
           x: 95,
-          y: 310-50,
+          y: (310-50),
           width: 240,
           height: 20,
           text: 'standard:&nbsp;&nbsp;&nbsp;10 / level',
@@ -728,7 +735,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "length_long",
           x: 95,
-          y: 330-50,
+          y: (330-50),
           width: 240,
           height: 20,
           text: 'long:&nbsp;&nbsp;&nbsp;20 / level',
@@ -747,7 +754,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "length_epic",
           x: 95,
-          y: 350-50,
+          y: (350-50),
           width: 240,
           height: 20,
           text: 'epic:&nbsp;&nbsp;&nbsp;30 / level',
@@ -766,7 +773,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "length_marathon",
           x: 95,
-          y: 370-50,
+          y: (370-50),
           width: 240,
           height: 20,
           text: 'marathon:&nbsp;&nbsp;&nbsp;50 / level',
@@ -785,7 +792,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "length_methuselah",
           x: 95,
-          y: 390-50,
+          y: (390-50),
           width: 240,
           height: 20,
           text: 'methuselah:&nbsp;&nbsp;&nbsp;100 / level',
@@ -816,7 +823,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "mode_progression",
           x: 95,
-          y: 430-50,
+          y: (430-50),
           width: 240,
           height: 20,
           text: 'progression',
@@ -835,7 +842,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "mode_static",
           x: 95,
-          y: 450-50,
+          y: (450-50),
           width: 240,
           height: 20,
           text: 'static level',
@@ -854,7 +861,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "mode_random",
           x: 95,
-          y: 470-50,
+          y: (470-50),
           width: 240,
           height: 20,
           text: 'random levels',
@@ -885,7 +892,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "mute_all",
           x: 95,
-          y: 510-50,
+          y: (510-50),
           width: 240,
           height: 20,
           text: 'sound: off',
@@ -904,7 +911,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "unmute_all",
           x: 95,
-          y: 530-50,
+          y: (530-50),
           width: 240,
           height: 20,
           text: 'sound: on',
@@ -924,7 +931,7 @@ let config_spec = {
         manager.get('ui').add_button({
           id: "start_game",
           x: 50,
-          y: 565-33,
+          y: (565-33),
           width: 240,
           height: 20,
           text: '',
